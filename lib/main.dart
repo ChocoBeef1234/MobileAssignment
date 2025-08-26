@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:user_profile/mySchedule.dart';
 import 'package:user_profile/myTask.dart';
 import 'package:user_profile/myTimer.dart';
+import 'package:user_profile/profile.dart';
 
 void main() {
   runApp(const MyApp());
@@ -33,7 +34,7 @@ class _MainScreenState extends State<MainScreen> {
     MyTasksPage(),
     MySchedulePage(),
     TimerPage(),
-    SettingsPage(),
+    ProfilePage(),
   ];
 
   @override
@@ -134,7 +135,7 @@ class _MainScreenState extends State<MainScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.settings,
+                        Icons.person,
                         color: currentIndex == 3
                             ? Colors.black
                             : Colors.white54,
@@ -158,11 +159,4 @@ class CalendarPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Center(child: Text("Calendar Page"));
-}
-
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text("Settings Page"));
 }
