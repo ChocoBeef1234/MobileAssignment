@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:user_profile/main.dart';
-
+import 'package:user_profile/notification.dart';
 
 class MyTasksPage extends StatefulWidget {
   const MyTasksPage({super.key});
@@ -59,7 +58,17 @@ class _MyTasksPageState extends State<MyTasksPage>
                         ],
                       ),
                       const Spacer(),
-                      const Icon(Icons.notifications_none, size: 28),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_none, size: 28),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationPage(),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -157,7 +166,6 @@ class _MyTasksPageState extends State<MyTasksPage>
               ),
             ),
           ),
-
         ],
       ),
     );
