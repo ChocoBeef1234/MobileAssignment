@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:user_profile/loginPage.dart';
 import 'package:user_profile/mySchedule.dart';
 import 'package:user_profile/myTask.dart';
 import 'package:user_profile/myTimer.dart';
@@ -22,7 +23,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      home: LoginPage(),
     );
   }
 }
