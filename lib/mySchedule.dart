@@ -178,23 +178,4 @@ class _MySchedulePageState extends State<MySchedulePage> {
     );
   }
 
-  // Bottom Nav Icon Widget
-  Widget _buildNavIcon(IconData icon, int index) {
-    bool isSelected = currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => currentIndex = index),
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          size: 26,
-          color: isSelected ? Colors.black : Colors.white54,
-        ),
-      ),
-    );
-  }
 }

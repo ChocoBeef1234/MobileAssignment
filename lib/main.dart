@@ -3,9 +3,16 @@ import 'package:user_profile/mySchedule.dart';
 import 'package:user_profile/myTask.dart';
 import 'package:user_profile/myTimer.dart';
 import 'package:user_profile/profile.dart';
+import 'package:firebase_core/firebase_core.dart'; 
+import 'firebase_options.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter engine is ready
+
+  // Initialize Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  //await SeedFirestore.seed();
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -30,6 +37,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int currentIndex = 0;
 
+
   final List<Widget> pages = const [
     MyTasksPage(),
     MySchedulePage(),
@@ -50,7 +58,7 @@ class _MainScreenState extends State<MainScreen> {
           // Floating nav bar
           Positioned(
             left: 60,
-            right:60,
+            right: 60,
             bottom: 20,
             child: Container(
               decoration: BoxDecoration(
@@ -100,7 +108,7 @@ class _MainScreenState extends State<MainScreen> {
                         Icons.calendar_today,
                         color: currentIndex == 1
                             ? Colors.black
-                            : Colors.white54, 
+                            : Colors.white54,
                         size: 18,
                       ),
                     ),

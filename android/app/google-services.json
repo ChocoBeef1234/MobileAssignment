@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "422021186222",
+    "project_id": "mobileassignment-4e361",
+    "storage_bucket": "mobileassignment-4e361.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422021186222:android:b84c9bae54e49cf815e33f",
+        "android_client_info": {
+          "package_name": "my.edu.tarc.user_profile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKu3oO-1w9pUiNe-EVgCrrpgk5CdHfVEk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
