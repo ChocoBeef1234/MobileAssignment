@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:user_profile/main.dart';
 
 class LoginPage extends StatefulWidget {
@@ -12,20 +13,24 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _secureStorage = const FlutterSecureStorage();
   bool _obscure = true;
   bool _loading = false;
   String? _error;
+  Future<void> clearAllData() async {
+    await _secureStorage.deleteAll(); // Clears all stored data
+  }
 
   Future<void> _login() async {
     setState(() {
       _loading = true;
       _error = null;
     });
-
+    clearAllData();
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
-      final passwordHash = 'hash:$password'; // match seeding format
+      final passwordHash = 'hash:$password';
 
       final snapshot = await FirebaseFirestore.instance
           .collection('staff')
@@ -34,7 +39,12 @@ class _LoginPageState extends State<LoginPage> {
           .get();
 
       if (snapshot.docs.isNotEmpty) {
-        // Login successful
+        final staffId = snapshot.docs.first.id;
+
+        // Save staff ID securely
+        await _secureStorage.write(key: 'staffID', value: staffId);
+
+        // Navigate to main screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -62,18 +72,19 @@ class _LoginPageState extends State<LoginPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header
             ClipPath(
               clipper: WaveBottomClipper(),
               child: Container(
-                    decoration: BoxDecoration(
-                      image: DecorationImage(image: AssetImage("assets/loginBackground.jpg"),fit: BoxFit.fill)
-                    ),
-                    height: 300,
-                    width: double.infinity,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage("assets/loginBackground.jpg"),
+                    fit: BoxFit.fill,
                   ),
+                ),
+                height: 300,
+                width: double.infinity,
+              ),
             ),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
@@ -110,11 +121,10 @@ class _LoginPageState extends State<LoginPage> {
                       labelText: "Password",
                       border: const UnderlineInputBorder(),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure
-                            ? Icons.visibility
-                            : Icons.visibility_off),
-                        onPressed: () =>
-                            setState(() => _obscure = !_obscure),
+                        icon: Icon(
+                          _obscure ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
                   ),
@@ -143,8 +153,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       onPressed: _loading ? null : _login,
                       child: _loading
-                          ? const CircularProgressIndicator(
-                              color: Colors.white)
+                          ? const CircularProgressIndicator(color: Colors.white)
                           : const Text("Login"),
                     ),
                   ),
@@ -158,7 +167,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// Simple wave clipper
 class WaveBottomClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -180,16 +188,4 @@ class WaveBottomClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
-}
-
-// Dummy dashboard page
-class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(child: Text("Logged in successfully!")),
-    );
-  }
 }
