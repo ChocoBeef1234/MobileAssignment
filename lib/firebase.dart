@@ -357,26 +357,26 @@ class SeedFirestore {
 
     // Sample baseline data ----------------------------------------------------
     final customer = Customer(
-      id: 'CUST001',
-      name: 'Alice Tan',
+      id: 'CUST002',
+      name: 'Lim Jia Jia',
       contactNo: '+60-12-3456789',
-      email: 'alice@example.com',
+      email: 'limJJ@example.com',
       passwordHash: 'hash:dummy',
     );
 
     final vehicle = Vehicle(
-      id: 'VEH001',
-      plateNo: 'WXY1234',
-      model: 'Perodua Myvi',
+      id: 'VEH002',
+      plateNo: 'ABC1234',
+      model: 'Perodua Vios',
       year: 2020,
       vinNo: 'VIN-XYZ-0001',
       custID: customer.id,
     );
 
     final job = Job(
-      id: 'JOB001',
+      id: 'JOB002',
       jobDate: Timestamp.now(),
-      jobStatus: 'in_progress',
+      jobStatus: 'Accepted',
       totalCost: 0, // will be computed later
       vehicleID: vehicle.id,
     );
@@ -394,7 +394,7 @@ class SeedFirestore {
     final partFilter = SparePart(id: 'PRT002', name: 'Oil Filter', cost: 25, stockQty: 100);
 
     final svcOilChange = ServiceItem(
-      id: 'SVC001',
+      id: 'SVC002',
       serviceName: 'Oil Change',
       serviceDescription: 'Replace engine oil and filter',
       serviceCost: 60,
@@ -405,7 +405,7 @@ class SeedFirestore {
     batch.set(Fire.db.collection(Col.customers).doc(customer.id), customer.toMap());
     batch.set(Fire.db.collection(Col.vehicles).doc(vehicle.id), vehicle.toMap());
     batch.set(Fire.db.collection(Col.jobs).doc(job.id), job.toMap());
-    batch.set(Fire.db.collection(Col.staff).doc(mechanic.id), mechanic.toMap());
+   // batch.set(Fire.db.collection(Col.staff).doc(mechanic.id), mechanic.toMap());
     batch.set(Fire.db.collection(Col.spareParts).doc(partOil.id), partOil.toMap());
     batch.set(Fire.db.collection(Col.spareParts).doc(partFilter.id), partFilter.toMap());
     batch.set(Fire.db.collection(Col.services).doc(svcOilChange.id), svcOilChange.toMap());
@@ -413,28 +413,28 @@ class SeedFirestore {
 
     // Use helpers that enforce FKs -------------------------------------------
     await repo.addJobAssignment(JobAssignment(
-      id: 'ASSIGN001',
+      id: 'ASSIGN002',
       jobID: job.id,
       staffID: mechanic.id,
-      hoursWorked: 1.5,
+      hoursWorked:3.0,
     ));
 
     await repo.addJobPart(JobPart(
       id: 'JP001',
       jobID: job.id,
       partID: partOil.id,
-      quantityUsed: 1,
+      quantityUsed: 3,
     ));
 
     await repo.addJobPart(JobPart(
       id: 'JP002',
       jobID: job.id,
       partID: partFilter.id,
-      quantityUsed: 1,
+      quantityUsed: 4,
     ));
 
     await repo.addJobService(JobService(
-      id: 'JS001',
+      id: 'JS002',
       jobID: job.id,
       serviceID: svcOilChange.id,
       subtotal: svcOilChange.serviceCost,
