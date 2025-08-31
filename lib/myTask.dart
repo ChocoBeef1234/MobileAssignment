@@ -13,7 +13,6 @@ class MyTasksPage extends StatefulWidget {
   State<MyTasksPage> createState() => _MyTasksPageState();
 }
 
-late TabController _tabController;
 final storage = const FlutterSecureStorage();
 String? staffId;
 
