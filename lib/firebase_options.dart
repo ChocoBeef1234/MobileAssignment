@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -28,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -65,4 +56,34 @@ class DefaultFirebaseOptions {
     storageBucket: 'mobileassignment-4e361.firebasestorage.app',
     iosBundleId: 'my.edu.tarc.userProfile',
   );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBfMn6Pe7TFA02oA0rIZ9x9eDoE_JOezYY',
+    appId: '1:422021186222:web:4f45b0a0a6303d1415e33f',
+    messagingSenderId: '422021186222',
+    projectId: 'mobileassignment-4e361',
+    authDomain: 'mobileassignment-4e361.firebaseapp.com',
+    storageBucket: 'mobileassignment-4e361.firebasestorage.app',
+    measurementId: 'G-SR8HLMWR42',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyB8AtErMTNLF3ORIq25-JYzb91EHWQQHvo',
+    appId: '1:422021186222:ios:bff2632ce039cc2d15e33f',
+    messagingSenderId: '422021186222',
+    projectId: 'mobileassignment-4e361',
+    storageBucket: 'mobileassignment-4e361.firebasestorage.app',
+    iosBundleId: 'my.edu.tarc.userProfile',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBfMn6Pe7TFA02oA0rIZ9x9eDoE_JOezYY',
+    appId: '1:422021186222:web:3599860e6f53355915e33f',
+    messagingSenderId: '422021186222',
+    projectId: 'mobileassignment-4e361',
+    authDomain: 'mobileassignment-4e361.firebaseapp.com',
+    storageBucket: 'mobileassignment-4e361.firebasestorage.app',
+    measurementId: 'G-0ZHN7QF69R',
+  );
+
 }
