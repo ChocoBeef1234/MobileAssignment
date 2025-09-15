@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ServiceHistoryPage extends StatelessWidget {
-  const ServiceHistoryPage({super.key});
+  final String jobID;
+  const ServiceHistoryPage({super.key, required this.jobID});
+
+  Future<Map<String, String>> _fetchServiceDescriptions() async {
+    final snap = await FirebaseFirestore.instance.collection('services').get();
+    final map = <String, String>{};
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      map[data['serviceID']] = data['serviceDescription'] ?? data['serviceName'] ?? data['serviceID'];
+    }
+    return map;
+  }
 
   @override
   Widget build(BuildContext context) {
+    print('[DEBUG] ServiceHistoryPage jobID: ' + jobID);
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
       appBar: PreferredSize(
@@ -57,7 +70,7 @@ class ServiceHistoryPage extends StatelessWidget {
                   Icon(Icons.person_outline, size: 24, color: Colors.black),
                   SizedBox(width: 8),
                   Text(
-                    'Ms Lim Jia Jia',
+                    'Service History',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
                   ),
                 ],
@@ -88,141 +101,136 @@ class ServiceHistoryPage extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 8),
-              // First entry
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Mar 13,\n2025',
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 5,
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFB6FFB6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Spark Plug Replacement',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Technician Notes:',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            'Replaced all 4 spark plugs. Engine misfiring issue resolved. Recommended follow-up in 12 months.',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Parts Replaced:',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            '• Spark Plug x4 (Part No: SP-221)',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              // Second entry
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Jun 20,\n2024',
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 5,
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFB6FFB6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Routine Maintenance (Oil & Filter Change)',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Technician Notes:',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            'Performed oil change, replaced oil filter and checked brake fluid. No major issues found.',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Parts Replaced:',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            '• Engine Oil 4L (Part No: EO-001)\n• Oil Filter (Part No: OF-110)',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: FutureBuilder<Map<String, String>>(
+                  future: _fetchServiceDescriptions(),
+                  builder: (context, serviceSnap) {
+                    if (serviceSnap.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    }
+                    if (!serviceSnap.hasData) {
+                      return Center(child: Text('No service info found.'));
+                    }
+                    final serviceMap = serviceSnap.data!;
+                    return FutureBuilder<QuerySnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('serviceRecord')
+                          .where('jobID', isEqualTo: jobID)
+                          .orderBy('serviceDate', descending: true)
+                          .get()
+                          .catchError((e) async {
+                            // If orderBy fails (e.g., missing or non-orderable field), try without ordering
+                            print('[DEBUG] orderBy serviceDate failed: ' + e.toString());
+                            return await FirebaseFirestore.instance
+                                .collection('serviceRecord')
+                                .where('jobID', isEqualTo: jobID)
+                                .get();
+                          }),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(child: Text('No service history found. Make sure serviceRecord has jobID and serviceDate fields.'));
+                        }
+                        final records = snapshot.data!.docs;
+                        return ListView.separated(
+                          itemCount: records.length,
+                          separatorBuilder: (context, idx) => SizedBox(height: 16),
+                          itemBuilder: (context, idx) {
+                            final record = records[idx].data() as Map<String, dynamic>;
+                            final date = _formatDate(record['serviceDate']);
+                            final serviceID = record['serviceID'] ?? '-';
+                            final serviceDesc = serviceMap[serviceID] ?? serviceID;
+                            final notes = (record['technicianNotes'] != null && record['technicianNotes'].toString().trim().isNotEmpty)
+                                ? record['technicianNotes']
+                                : '-';
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      date,
+                                      style: TextStyle(fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 5,
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFB6FFB6),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          serviceDesc,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Technician Notes:',
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          notes,
+                                          style: TextStyle(fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _formatDate(dynamic value) {
+    if (value is Timestamp) {
+      final dt = value.toDate();
+      return '${_monthName(dt.month)} ${dt.day},\n${dt.year}';
+    } else if (value is String) {
+      // Try to parse string as date
+      try {
+        final dt = DateTime.parse(value);
+        return '${_monthName(dt.month)} ${dt.day},\n${dt.year}';
+      } catch (_) {
+        return value;
+      }
+    }
+    return '-';
+  }
+
+  String _monthName(int month) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month];
   }
 }

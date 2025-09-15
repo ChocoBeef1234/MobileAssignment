@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JobStatusPage extends StatefulWidget {
-  const JobStatusPage({super.key});
+  final String jobID;
+  final String? serviceRecordID;
+  const JobStatusPage({Key? key, required this.jobID, this.serviceRecordID})
+    : super(key: key);
 
   @override
   State<JobStatusPage> createState() => _JobStatusPageState();
@@ -19,6 +23,70 @@ class _JobStatusPageState extends State<JobStatusPage> {
   final TextEditingController noteController = TextEditingController(
     text: 'Today...',
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialStatus();
+  }
+
+  Future<void> _loadInitialStatus() async {
+    // Load current job status and note from Firestore
+    final db = FirebaseFirestore.instance;
+    final jobDoc = await db.collection('jobs').doc(widget.jobID).get();
+    if (jobDoc.exists) {
+      final job = jobDoc.data()!;
+      setState(() {
+        status = job['jobStatus'] ?? status;
+      });
+    }
+    if (widget.serviceRecordID != null) {
+      final svcDoc = await db
+          .collection('serviceRecord')
+          .doc(widget.serviceRecordID)
+          .get();
+      if (svcDoc.exists) {
+        final svc = svcDoc.data()!;
+        noteController.text = svc['technicianNotes'] ?? noteController.text;
+      }
+    }
+  }
+
+  Future<void> _saveStatus() async {
+    final db = FirebaseFirestore.instance;
+    // Update job status
+    await db.collection('jobs').doc(widget.jobID).update({'jobStatus': status});
+
+    // Get the highest serviceRecordID and increment
+    final records = await db.collection('serviceRecord').orderBy('serviceRecordID', descending: true).limit(1).get();
+    int nextNumber = 1;
+    if (records.docs.isNotEmpty) {
+      final lastID = records.docs.first['serviceRecordID'] as String?;
+      if (lastID != null && lastID.startsWith('SVCR')) {
+        final numPart = int.tryParse(lastID.substring(4));
+        if (numPart != null) {
+          nextNumber = numPart + 1;
+        }
+      }
+    }
+    final newServiceRecordID = 'SVCR' + nextNumber.toString().padLeft(3, '0');
+
+    // Fetch serviceID from job document
+    String? serviceID;
+    final jobDoc = await db.collection('jobs').doc(widget.jobID).get();
+    if (jobDoc.exists) {
+      final jobData = jobDoc.data();
+      serviceID = jobData?['serviceID'] as String?;
+    }
+
+    await db.collection('serviceRecord').doc(newServiceRecordID).set({
+      'serviceRecordID': newServiceRecordID,
+      'jobID': widget.jobID,
+      'technicianNotes': noteController.text,
+      'serviceDate': FieldValue.serverTimestamp(),
+      'serviceID': serviceID ?? '', // Use fetched serviceID or empty string
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +232,10 @@ class _JobStatusPageState extends State<JobStatusPage> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: () async {
+                    await _saveStatus();
+                    if (mounted) Navigator.of(context).pop();
+                  },
                   child: Text(
                     'Save',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
