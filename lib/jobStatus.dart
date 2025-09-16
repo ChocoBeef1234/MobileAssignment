@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:user_profile/photo.dart';
 
 class JobStatusPage extends StatefulWidget {
   final String jobID;
@@ -117,9 +118,11 @@ class _JobStatusPageState extends State<JobStatusPage> {
                 icon: Icon(
                   Icons.camera_alt_outlined,
                   color: Colors.black,
-                  size: 22,
+                  size: 22, 
                 ),
-                onPressed: () {},
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                              builder: (context) => const CameraUploadPage(),
+                            )),
               ),
             ],
           ),

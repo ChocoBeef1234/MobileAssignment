@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:user_profile/showImage.dart';
 
 class ServiceHistoryPage extends StatelessWidget {
   final String jobID;
@@ -10,7 +11,10 @@ class ServiceHistoryPage extends StatelessWidget {
     final map = <String, String>{};
     for (final doc in snap.docs) {
       final data = doc.data();
-      map[data['serviceID']] = data['serviceDescription'] ?? data['serviceName'] ?? data['serviceID'];
+      map[data['serviceID']] =
+          data['serviceDescription'] ??
+          data['serviceName'] ??
+          data['serviceID'];
     }
     return map;
   }
@@ -43,11 +47,18 @@ class ServiceHistoryPage extends StatelessWidget {
               Spacer(),
               IconButton(
                 icon: Icon(
-                  Icons.camera_alt_outlined,
+                  Icons.image_outlined,
                   color: Colors.black,
                   size: 22,
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const JobImagesPage(jobID: 'JOB001'),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -105,7 +116,8 @@ class ServiceHistoryPage extends StatelessWidget {
                 child: FutureBuilder<Map<String, String>>(
                   future: _fetchServiceDescriptions(),
                   builder: (context, serviceSnap) {
-                    if (serviceSnap.connectionState == ConnectionState.waiting) {
+                    if (serviceSnap.connectionState ==
+                        ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
                     }
                     if (!serviceSnap.hasData) {
@@ -120,29 +132,45 @@ class ServiceHistoryPage extends StatelessWidget {
                           .get()
                           .catchError((e) async {
                             // If orderBy fails (e.g., missing or non-orderable field), try without ordering
-                            print('[DEBUG] orderBy serviceDate failed: ' + e.toString());
+                            print(
+                              '[DEBUG] orderBy serviceDate failed: ' +
+                                  e.toString(),
+                            );
                             return await FirebaseFirestore.instance
                                 .collection('serviceRecord')
                                 .where('jobID', isEqualTo: jobID)
                                 .get();
                           }),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return Center(child: CircularProgressIndicator());
                         }
                         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return Center(child: Text('No service history found. Make sure serviceRecord has jobID and serviceDate fields.'));
+                          return Center(
+                            child: Text(
+                              'No service history found. Make sure serviceRecord has jobID and serviceDate fields.',
+                            ),
+                          );
                         }
                         final records = snapshot.data!.docs;
                         return ListView.separated(
                           itemCount: records.length,
-                          separatorBuilder: (context, idx) => SizedBox(height: 16),
+                          separatorBuilder: (context, idx) =>
+                              SizedBox(height: 16),
                           itemBuilder: (context, idx) {
-                            final record = records[idx].data() as Map<String, dynamic>;
+                            final record =
+                                records[idx].data() as Map<String, dynamic>;
                             final date = _formatDate(record['serviceDate']);
                             final serviceID = record['serviceID'] ?? '-';
-                            final serviceDesc = serviceMap[serviceID] ?? serviceID;
-                            final notes = (record['technicianNotes'] != null && record['technicianNotes'].toString().trim().isNotEmpty)
+                            final serviceDesc =
+                                serviceMap[serviceID] ?? serviceID;
+                            final notes =
+                                (record['technicianNotes'] != null &&
+                                    record['technicianNotes']
+                                        .toString()
+                                        .trim()
+                                        .isNotEmpty)
                                 ? record['technicianNotes']
                                 : '-';
                             return Row(
@@ -154,7 +182,9 @@ class ServiceHistoryPage extends StatelessWidget {
                                     padding: const EdgeInsets.only(top: 8.0),
                                     child: Text(
                                       date,
-                                      style: TextStyle(fontWeight: FontWeight.w500),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -168,7 +198,8 @@ class ServiceHistoryPage extends StatelessWidget {
                                     ),
                                     padding: EdgeInsets.all(12),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           serviceDesc,
@@ -228,8 +259,19 @@ class ServiceHistoryPage extends StatelessWidget {
 
   String _monthName(int month) {
     const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return months[month];
   }
