@@ -121,7 +121,7 @@ class _JobStatusPageState extends State<JobStatusPage> {
                   size: 22, 
                 ),
                 onPressed: () => Navigator.push(context, MaterialPageRoute(
-                              builder: (context) => const CameraUploadPage(),
+                              builder: (context) => CameraUploadPage(jobID: widget.jobID,),
                             )),
               ),
             ],
