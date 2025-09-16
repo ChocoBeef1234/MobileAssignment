@@ -55,7 +55,7 @@ class ServiceHistoryPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const JobImagesPage(jobID: 'JOB001'),
+                      builder: (_) => JobImagesPage(jobID: jobID),
                     ),
                   );
                 },

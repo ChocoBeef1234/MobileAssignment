@@ -6,7 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CameraUploadPage extends StatefulWidget {
-  const CameraUploadPage({Key? key}) : super(key: key);
+  final String jobID;
+  const CameraUploadPage({Key? key, required this.jobID}) : super(key: key);
 
   @override
   State<CameraUploadPage> createState() => _CameraUploadPageState();
@@ -49,7 +50,7 @@ class _CameraUploadPageState extends State<CameraUploadPage> {
 
         // Save each image as a new document in Firestore
         await FirebaseFirestore.instance.collection('imageRecord').add({
-          'jobsID': 'JOB001',
+          'jobsID': widget.jobID,
           'capturedDate': DateTime.now().toIso8601String(),
           'image': base64Image,
         });
