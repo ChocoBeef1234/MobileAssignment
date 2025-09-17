@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -15,6 +18,7 @@ class MyTasksPage extends StatefulWidget {
 
 final storage = const FlutterSecureStorage();
 String? staffId;
+String? staffImageBase64;
 
 class _MyTasksPageState extends State<MyTasksPage>
     with SingleTickerProviderStateMixin {
@@ -29,6 +33,19 @@ class _MyTasksPageState extends State<MyTasksPage>
 
   Future<void> _loadStaffId() async {
     staffId = await storage.read(key: "staffID");
+    if (staffId != null) {
+      // 🔹 Get staff image
+      final staffSnap = await FirebaseFirestore.instance
+          .collection('staff')
+          .where('staffID', isEqualTo: staffId)
+          .limit(1)
+          .get();
+
+      if (staffSnap.docs.isNotEmpty) {
+        final data = staffSnap.docs.first.data();
+        staffImageBase64 = data['profile_image']; // your image field name
+      }
+    }
     setState(() {});
   }
 
@@ -133,7 +150,7 @@ class _MyTasksPageState extends State<MyTasksPage>
         children: [
           // Main content with SafeArea
           SafeArea(
-            bottom: false, // allow content under nav bar
+            bottom: false,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -142,10 +159,21 @@ class _MyTasksPageState extends State<MyTasksPage>
                   // Top Profile Section
                   Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 25,
-                        backgroundImage: AssetImage('assets/avatar.png'),
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage:
+                            (staffImageBase64 != null &&
+                                staffImageBase64!.isNotEmpty)
+                            ? MemoryImage(base64Decode(staffImageBase64!))
+                            : null,
+                        child:
+                            (staffImageBase64 == null ||
+                                staffImageBase64!.isEmpty)
+                            ? const Icon(Icons.person, color: Colors.grey)
+                            : null,
                       ),
+
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
