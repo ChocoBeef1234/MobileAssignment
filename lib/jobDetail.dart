@@ -534,19 +534,16 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
 
   Future<Map<String, dynamic>> _fetchJobDetails(String jobID) async {
     final db = FirebaseFirestore.instance;
-    // Get job
     final jobDoc = await db.collection('jobs').doc(jobID).get();
     if (!jobDoc.exists) return {};
     final job = jobDoc.data()!;
 
-    // Get vehicle
     final vehicleDoc = await db
         .collection('vehicles')
         .doc(job['vehicleID'])
         .get();
     final vehicle = vehicleDoc.data();
 
-    // Get customer
     Map<String, dynamic>? customer;
     if (vehicle != null) {
       final custDoc = await db
@@ -556,7 +553,6 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       customer = custDoc.data();
     }
 
-    // Get assigned parts (join jobParts and spareParts)
     final jobPartsSnap = await db
         .collection('jobParts')
         .where('jobID', isEqualTo: jobID)
@@ -577,7 +573,6 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       }
     }
 
-    // Get service description from services collection using job['serviceID']
     String? serviceDescription;
     if (job['serviceID'] != null) {
       print('Job serviceID: \'${job['serviceID']}\'');
@@ -598,7 +593,6 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       print('No serviceID found in job document');
     }
 
-    // Get signature and feedback
     String? signature = job['signature'];
     String? feedback = job['feedback'];
 
@@ -621,9 +615,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
     return '-';
   }
 
-  // Helper method to convert base64 string to Uint8List
   Uint8List _base64ToUint8List(String base64String) {
-    // Change return type from Object to Uint8List
     try {
       return const Base64Decoder().convert(base64String);
     } catch (e) {
