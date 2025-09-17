@@ -177,7 +177,6 @@ class _JobStatusPageState extends State<JobStatusPage> {
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                 ),
                 Spacer(),
-                Icon(Icons.image_outlined, color: Colors.black54, size: 20),
               ],
             ),
             SizedBox(height: 8),
