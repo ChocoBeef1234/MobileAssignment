@@ -19,6 +19,8 @@ class MyTasksPage extends StatefulWidget {
 final storage = const FlutterSecureStorage();
 String? staffId;
 String? staffImageBase64;
+String? staffName;
+String? staffContactNo;
 
 class _MyTasksPageState extends State<MyTasksPage>
     with SingleTickerProviderStateMixin {
@@ -43,7 +45,11 @@ class _MyTasksPageState extends State<MyTasksPage>
 
       if (staffSnap.docs.isNotEmpty) {
         final data = staffSnap.docs.first.data();
-        staffImageBase64 = data['profile_image']; // your image field name
+        staffImageBase64 = data['profile_image'];
+        final staffData = staffSnap.docs.first.data();
+        staffName = staffData['staffName'] as String?;
+        final staffPho = staffSnap.docs.first.data();
+        staffContactNo = staffPho['staffContactNo'] as String?;
       }
     }
     setState(() {});
@@ -203,17 +209,17 @@ class _MyTasksPageState extends State<MyTasksPage>
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
-                            "Hi, Fahmi 👋",
-                            style: TextStyle(
+                            "Hi, $staffName 👋",
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            "Today is: July 17, 2025",
-                            style: TextStyle(color: Colors.grey),
+                            "Phone Number: $staffContactNo",
+                            style: const TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
