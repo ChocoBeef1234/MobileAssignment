@@ -45,7 +45,7 @@ class _TimerPageState extends State<TimerPage> {
           .get();
       if (!jobDoc.exists) return null;
       final jobData = jobDoc.data()!;
-      if (jobData['jobStatus'] != 'Accepted') return null;
+      if (jobData['jobStatus'] != 'Accepted'&& jobData['jobStatus'] != 'In Progress') return null;
 
       final vehicleId = jobData['vehicleID'];
       final vehicleDoc = await FirebaseFirestore.instance
@@ -198,18 +198,96 @@ void _pauseTimer() {
                       itemCount: tasks.length,
                       itemBuilder: (context, index) {
                         final task = tasks[index];
-                        return ListTile(
-                          title: Text(task['custName'] ?? 'No Name'),
-                          subtitle: Text(
-                            "${task['vehicleModel'] ?? ''} - ${task['vehiclePlate'] ?? ''}",
+                        final bool isSelected = task['id'] == _selectedTaskId;
+                        final String title = task['custName'] ?? 'No Name';
+                        final String subtitle = "${task['vehicleModel'] ?? ''} - ${task['vehiclePlate'] ?? ''}";
+                        final String timeText = formatDuration((task['timeWorked'] ?? 0).toInt());
+
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? Colors.black : Colors.grey.shade300,
+                              width: isSelected ? 1.2 : 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
-                          trailing: Text(
-                            formatDuration((task['timeWorked'] ?? 0).toInt()),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => _onTaskTap(task),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(Icons.build, color: Colors.black87),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            title,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            subtitle,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey[700],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? Colors.black : Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        timeText,
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.white : Colors.black87,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                          onTap: () => _onTaskTap(task),
-                          selected: task['id'] == _selectedTaskId,
                         );
                       },
                     );

@@ -230,7 +230,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                       ),
                                       SizedBox(height: 2),
                                       Text(
-                                        _formatDate(job?['createdDate']),
+                                        _formatDate(job?['createdAt']),
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 15,
@@ -327,7 +327,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                       isScrollControlled: true,
                                       backgroundColor: Colors.transparent,
                                       builder: (context) {
-                                        return AssignedPartsBottomSheet();
+                                        return AssignedPartsBottomSheet(jobID: widget.jobID); // Pass jobID here
                                       },
                                     );
                                   },

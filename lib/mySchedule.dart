@@ -226,7 +226,7 @@ class _MySchedulePageState extends State<MySchedulePage> {
     switch (status.toLowerCase()) {
       case 'accepted':
         return Colors.purple.shade200;
-      case 'in progress':
+      case 'In Progress':
         return Colors.orange.shade200;
       case 'completed':
         return Colors.green.shade200;
