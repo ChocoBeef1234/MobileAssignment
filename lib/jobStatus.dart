@@ -59,7 +59,11 @@ class _JobStatusPageState extends State<JobStatusPage> {
     await db.collection('jobs').doc(widget.jobID).update({'jobStatus': status});
 
     // Get the highest serviceRecordID and increment
-    final records = await db.collection('serviceRecord').orderBy('serviceRecordID', descending: true).limit(1).get();
+    final records = await db
+        .collection('serviceRecord')
+        .orderBy('serviceRecordID', descending: true)
+        .limit(1)
+        .get();
     int nextNumber = 1;
     if (records.docs.isNotEmpty) {
       final lastID = records.docs.first['serviceRecordID'] as String?;
