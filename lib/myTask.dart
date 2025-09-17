@@ -21,6 +21,7 @@ String? staffId;
 String? staffImageBase64;
 String? staffName;
 String? staffContactNo;
+String _searchQuery = '';
 
 class _MyTasksPageState extends State<MyTasksPage>
     with SingleTickerProviderStateMixin {
@@ -72,9 +73,10 @@ class _MyTasksPageState extends State<MyTasksPage>
   }
 
   Future<List<Widget>> generateTaskCards(
-      String staffId, {
-        String? filterStatus,
-      }) async {
+    String staffId, {
+    String? filterStatus,
+    String? searchQuery, // <-- added
+  }) async {
     final assignmentsSnap = await FirebaseFirestore.instance
         .collection('jobAssignments')
         .where('staffID', isEqualTo: staffId)
@@ -96,6 +98,40 @@ class _MyTasksPageState extends State<MyTasksPage>
 
       if (filterStatus != null && status != filterStatus) continue;
 
+      // vehicles
+      final vehicleSnap = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(jobData['vehicleID'])
+          .get();
+      final vehicleData = vehicleSnap.data()!;
+
+      // customers
+      final customerSnap = await FirebaseFirestore.instance
+          .collection('customers')
+          .doc(vehicleData['custID'])
+          .get();
+      final customerName = customerSnap.data()?['custName'] ?? 'Unknown';
+
+      // Build searchable text
+      final carInfo = "${vehicleData['model']} ${vehicleData['plateNo']}";
+      final searchText = "$customerName $carInfo".toLowerCase();
+
+      // 🔹 Filter by search text
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        if (!searchText.contains(searchQuery.toLowerCase())) {
+          continue; // skip if no match
+        }
+      }
+
+      // timestamp
+      final jobDate = (jobData['createdAt'] as Timestamp).toDate();
+      final formattedDate = "${jobDate.day}/${jobDate.month}/${jobDate.year}";
+
+      // times
+      final carInTime = jobData['carIn'] as Timestamp?;
+      final carOutTime = jobData['carOut'] as Timestamp?;
+
+      // Colors
       Color statusColor;
       Color statusTextColor;
 
@@ -112,34 +148,14 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusColor = Colors.green.shade100;
           statusTextColor = Colors.green.shade700;
           break;
-        case 'Completed':
-          statusColor = Color(0xFFD4F8E8);
-          statusTextColor = Color(0xFF059669);
+        case 'On Hold':
+          statusColor = Colors.red.shade100;
+          statusTextColor = Colors.red.shade700;
           break;
         default:
           statusColor = Colors.grey;
           statusTextColor = Colors.black;
       }
-
-      // Fetch related collections (vehicles, customers)
-      final vehicleSnap = await FirebaseFirestore.instance
-          .collection('vehicles')
-          .doc(jobData['vehicleID'])
-          .get();
-      final vehicleData = vehicleSnap.data()!;
-      final customerSnap = await FirebaseFirestore.instance
-          .collection('customers')
-          .doc(vehicleData['custID'])
-          .get();
-      final customerName = customerSnap.data()?['custName'] ?? 'Unknown';
-
-      // Convert timestamp to readable date
-      final jobDate = (jobData['createdAt'] as Timestamp).toDate();
-      final formattedDate = "${jobDate.day}/${jobDate.month}/${jobDate.year}";
-
-      // Get car in and car out times
-      final carInTime = jobData['carIn'] as Timestamp?;
-      final carOutTime = jobData['carOut'] as Timestamp?;
 
       taskCards.add(
         TaskCard(
@@ -159,23 +175,28 @@ class _MyTasksPageState extends State<MyTasksPage>
     return taskCards;
   }
 
-  Widget buildTaskList(String? filter) {
-    return FutureBuilder<List<Widget>>(
-      future: generateTaskCards(staffId!, filterStatus: filter),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text("No tasks found"));
-        }
-        return ListView(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 140),
-          children: snapshot.data!,
-        );
-      },
-    );
-  }
+Widget buildTaskList(String? filter) {
+  return FutureBuilder<List<Widget>>(
+    future: generateTaskCards(
+      staffId!,
+      filterStatus: filter,
+      searchQuery: _searchQuery, // <-- pass search
+    ),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        return const Center(child: Text("No tasks found"));
+      }
+      return ListView(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 140),
+        children: snapshot.data!,
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +213,6 @@ class _MyTasksPageState extends State<MyTasksPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Row(
                     children: [
                       CircleAvatar(
@@ -250,6 +270,7 @@ class _MyTasksPageState extends State<MyTasksPage>
                   const SizedBox(height: 12),
 
                   // Search bar
+                  // Search bar
                   TextField(
                     decoration: InputDecoration(
                       hintText: "Search",
@@ -261,7 +282,13 @@ class _MyTasksPageState extends State<MyTasksPage>
                         borderSide: BorderSide.none,
                       ),
                     ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
                   ),
+
                   const SizedBox(height: 10),
 
                   // Tabs
@@ -293,21 +320,21 @@ class _MyTasksPageState extends State<MyTasksPage>
                     child: staffId == null
                         ? Center(child: CircularProgressIndicator())
                         : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        // All Tasks
-                        buildTaskList(null),
+                            controller: _tabController,
+                            children: [
+                              // All Tasks
+                              buildTaskList(null),
 
-                        // Accepted Tasks
-                        buildTaskList("Accepted"),
+                              // Accepted Tasks
+                              buildTaskList("Accepted"),
 
-                        // In Progress Tasks
-                        buildTaskList("In Progress"),
+                              // In Progress Tasks
+                              buildTaskList("In Progress"),
 
-                        // On Hold Tasks
-                        buildTaskList("On Hold"),
-                      ],
-                    ),
+                              // On Hold Tasks
+                              buildTaskList("On Hold"),
+                            ],
+                          ),
                   ),
                 ],
               ),
@@ -393,12 +420,18 @@ class TaskCard extends StatelessWidget {
                     children: [
                       Text(
                         "Time In: ${_formatTime(carInTime)}",
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         "Time Out: ${_formatTime(carOutTime)}",
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
