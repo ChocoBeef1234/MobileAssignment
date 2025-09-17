@@ -1,9 +1,11 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'jobStatus.dart';
 import 'serviceHistory.dart';
 import 'assigned_parts_bottom_sheet.dart';
-
+import 'signature.dart';
 import 'firebase.dart';
 
 class JobDetailsPage extends StatefulWidget {
@@ -83,6 +85,8 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
           final vehicle = data['vehicle'] as Map<String, dynamic>?;
           final job = data['job'] as Map<String, dynamic>?;
           final parts = data['parts'] as List<Map<String, dynamic>>?;
+          final signatureData = data['signature'] as String?;
+          final feedbackData = data['feedback'] as String?;
 
           return Container(
             color: const Color(0xFFF9F9F9),
@@ -157,7 +161,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Phone',
@@ -214,7 +218,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Date',
@@ -268,7 +272,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                             decoration: BoxDecoration(
                                               color: Color(0xFFE6D6FA),
                                               borderRadius:
-                                                  BorderRadius.circular(16),
+                                              BorderRadius.circular(16),
                                             ),
                                             child: Text(
                                               job?['jobStatus'] ?? '-',
@@ -335,7 +339,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                             SizedBox(height: 2),
                             if (parts != null)
                               ...parts.map(
-                                (part) => Padding(
+                                    (part) => Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 2.0,
                                   ),
@@ -343,6 +347,117 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                     '• ${part['partName']} (Part No: ${part['partID']})',
                                     style: TextStyle(fontSize: 15),
                                   ),
+                                ),
+                              ),
+
+                            // Signature and Feedback Section
+                            SizedBox(height: 24),
+                            Row(
+                              children: [
+                                Text(
+                                  'Signature and Feedback',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Spacer(),
+                                if (signatureData == null && feedbackData == null)
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () async {
+                                      final result = await Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => SignatureFeedbackPage(jobID: widget.jobID),
+                                        ),
+                                      );
+                                      if (result == true) {
+                                        _refreshJobDetails();
+                                      }
+                                    },
+                                    child: Icon(
+                                      Icons.edit_rounded,
+                                      size: 28,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+
+                            // Signature Display
+                            if (signatureData != null) ...[
+                              Text(
+                                'Signature',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.memory(
+                                    _base64ToUint8List(signatureData),
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+
+                            // Feedback Display
+                            if (feedbackData != null) ...[
+                              Text(
+                                'Feedback',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey[50],
+                                ),
+                                child: Text(
+                                  feedbackData,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ),
+                            ],
+
+                            if (signatureData == null && feedbackData == null)
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey[50],
+                                ),
+                                child: Text(
+                                  'No signature or feedback provided yet.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                           ],
@@ -393,20 +508,20 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
     );
   }
 
-  // Removed duplicate trailing code after refactor
-
   Future<Map<String, dynamic>> _fetchJobDetails(String jobID) async {
     final db = FirebaseFirestore.instance;
     // Get job
     final jobDoc = await db.collection('jobs').doc(jobID).get();
     if (!jobDoc.exists) return {};
     final job = jobDoc.data()!;
+
     // Get vehicle
     final vehicleDoc = await db
         .collection('vehicles')
         .doc(job['vehicleID'])
         .get();
     final vehicle = vehicleDoc.data();
+
     // Get customer
     Map<String, dynamic>? customer;
     if (vehicle != null) {
@@ -416,6 +531,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
           .get();
       customer = custDoc.data();
     }
+
     // Get assigned parts (join jobParts and spareParts)
     final jobPartsSnap = await db
         .collection('jobParts')
@@ -436,6 +552,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
         });
       }
     }
+
     // Get service description from services collection using job['serviceID']
     String? serviceDescription;
     if (job['serviceID'] != null) {
@@ -451,12 +568,19 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
     } else {
       print('No serviceID found in job document');
     }
+
+    // Get signature and feedback
+    String? signature = job['signature'];
+    String? feedback = job['feedback'];
+
     return {
       'job': job,
       'vehicle': vehicle,
       'customer': customer,
       'parts': parts,
       'serviceDescription': serviceDescription,
+      'signature': signature,
+      'feedback': feedback,
     };
   }
 
@@ -466,5 +590,15 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
     }
     return '-';
+  }
+
+  // Helper method to convert base64 string to Uint8List
+  Uint8List _base64ToUint8List(String base64String) {  // Change return type from Object to Uint8List
+    try {
+      return const Base64Decoder().convert(base64String);
+    } catch (e) {
+      print('Error decoding base64: $e');
+      return Uint8List(0);
+    }
   }
 }
