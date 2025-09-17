@@ -230,7 +230,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                       ),
                                       SizedBox(height: 2),
                                       Text(
-                                        _formatDate(job?['jobDate']),
+                                        _formatDate(job?['createdDate']),
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 15,

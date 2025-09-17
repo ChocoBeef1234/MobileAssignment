@@ -32,10 +32,26 @@ class _MyTasksPageState extends State<MyTasksPage>
     setState(() {});
   }
 
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return "Time In: --:--";
+
+    final dateTime = timestamp.toDate();
+    final timeFormat = DateFormat('HH:mm');
+    return "Time In: ${timeFormat.format(dateTime)}";
+  }
+
+  String _formatTimeOut(Timestamp? timestamp) {
+    if (timestamp == null) return "Time Out: --:--";
+
+    final dateTime = timestamp.toDate();
+    final timeFormat = DateFormat('HH:mm');
+    return "Time Out: ${timeFormat.format(dateTime)}";
+  }
+
   Future<List<Widget>> generateTaskCards(
-    String staffId, {
-    String? filterStatus,
-  }) async {
+      String staffId, {
+        String? filterStatus,
+      }) async {
     final assignmentsSnap = await FirebaseFirestore.instance
         .collection('jobAssignments')
         .where('staffID', isEqualTo: staffId)
@@ -69,6 +85,10 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusColor = Color(0xFFFFE4B5);
           statusTextColor = Color(0xFFB87333);
           break;
+        case 'Completed':
+          statusColor = Color(0xFFD4F8E8);
+          statusTextColor = Color(0xFF059669);
+          break;
         default:
           statusColor = Colors.grey;
           statusTextColor = Colors.black;
@@ -87,8 +107,12 @@ class _MyTasksPageState extends State<MyTasksPage>
       final customerName = customerSnap.data()?['custName'] ?? 'Unknown';
 
       // Convert timestamp to readable date
-      final jobDate = (jobData['jobDate'] as Timestamp).toDate();
+      final jobDate = (jobData['createdAt'] as Timestamp).toDate();
       final formattedDate = "${jobDate.day}/${jobDate.month}/${jobDate.year}";
+
+      // Get car in and car out times
+      final carInTime = jobData['carIn'] as Timestamp?;
+      final carOutTime = jobData['carOut'] as Timestamp?;
 
       taskCards.add(
         TaskCard(
@@ -97,8 +121,10 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusColor: statusColor,
           statusTextColor: statusTextColor,
           name: customerName,
-          car: vehicleData['model'],
+          car: "${vehicleData['model']} - ${vehicleData['plateNo']}",
           date: formattedDate,
+          carInTime: carInTime,
+          carOutTime: carOutTime,
         ),
       );
     }
@@ -133,13 +159,13 @@ class _MyTasksPageState extends State<MyTasksPage>
         children: [
           // Main content with SafeArea
           SafeArea(
-            bottom: false, // allow content under nav bar
+            bottom: false,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Profile Section
+
                   Row(
                     children: [
                       const CircleAvatar(
@@ -229,21 +255,21 @@ class _MyTasksPageState extends State<MyTasksPage>
                     child: staffId == null
                         ? Center(child: CircularProgressIndicator())
                         : TabBarView(
-                            controller: _tabController,
-                            children: [
-                              // All Tasks
-                              buildTaskList(null),
+                      controller: _tabController,
+                      children: [
+                        // All Tasks
+                        buildTaskList(null),
 
-                              // Accepted Tasks
-                              buildTaskList("Accepted"),
+                        // Accepted Tasks
+                        buildTaskList("Accepted"),
 
-                              // In Progress Tasks
-                              buildTaskList("In Progress"),
+                        // In Progress Tasks
+                        buildTaskList("In Progress"),
 
-                              // On Hold Tasks
-                              buildTaskList("On Hold"),
-                            ],
-                          ),
+                        // On Hold Tasks
+                        buildTaskList("On Hold"),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -263,6 +289,8 @@ class TaskCard extends StatelessWidget {
   final String name;
   final String car;
   final String date;
+  final Timestamp? carInTime;
+  final Timestamp? carOutTime;
 
   const TaskCard({
     super.key,
@@ -273,7 +301,17 @@ class TaskCard extends StatelessWidget {
     required this.name,
     required this.car,
     required this.date,
+    this.carInTime,
+    this.carOutTime,
   });
+
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return "--:--";
+
+    final dateTime = timestamp.toDate();
+    final timeFormat = DateFormat('HH:mm');
+    return timeFormat.format(dateTime);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +346,29 @@ class TaskCard extends StatelessWidget {
             ),
             Text(car, style: const TextStyle(color: Colors.black87)),
             const SizedBox(height: 8),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Time In: ${_formatTime(carInTime)}",
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Time Out: ${_formatTime(carOutTime)}",
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
