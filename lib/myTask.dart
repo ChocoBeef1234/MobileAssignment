@@ -87,7 +87,7 @@ class _MyTasksPageState extends State<MyTasksPage>
       final customerName = customerSnap.data()?['custName'] ?? 'Unknown';
 
       // Convert timestamp to readable date
-      final jobDate = (jobData['jobDate'] as Timestamp).toDate();
+      final jobDate = (jobData['createdAt'] as Timestamp).toDate();
       final formattedDate = "${jobDate.day}/${jobDate.month}/${jobDate.year}";
 
       taskCards.add(
