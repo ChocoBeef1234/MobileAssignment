@@ -440,13 +440,18 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
     String? serviceDescription;
     if (job['serviceID'] != null) {
       print('Job serviceID: \'${job['serviceID']}\'');
-      final serviceDoc = await db.collection('services').doc(job['serviceID']).get();
+      final serviceDoc = await db
+          .collection('services')
+          .doc(job['serviceID'])
+          .get();
       if (serviceDoc.exists) {
         final serviceData = serviceDoc.data();
         serviceDescription = serviceData?['serviceDescription'] ?? '';
         print('Fetched serviceDescription: \'$serviceDescription\'');
       } else {
-        print('No service document found for serviceID: \'${job['serviceID']}\'');
+        print(
+          'No service document found for serviceID: \'${job['serviceID']}\'',
+        );
       }
     } else {
       print('No serviceID found in job document');
