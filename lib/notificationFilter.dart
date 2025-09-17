@@ -66,12 +66,19 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
     });
   }
 
+  void _resetAll() {
+    // Close dialog and return null to indicate reset/clear filters
+    Navigator.pop(context, null);
+  }
+
   String _formatDate(DateTime date) {
     return "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
   }
 
   @override
   Widget build(BuildContext context) {
+    print('Building dialog - fromDate: $fromDate, toDate: $toDate, sortBy: $sortBy');
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -172,6 +179,7 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
 
             const SizedBox(height: 8),
 
+            // Quick select buttons
             Row(
               children: [
                 OutlinedButton(
@@ -237,6 +245,7 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
+              key: Key(sortBy), // Add key to force rebuild
               value: sortBy,
               items: sortOptions
                   .map(
@@ -268,13 +277,7 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      fromDate = null;
-                      toDate = null;
-                      sortBy = sortOptions[0];
-                    });
-                  },
+                  onPressed: _resetAll, // Use separate method for better debugging
                   child: const Text("Reset All"),
                 ),
                 ElevatedButton(
