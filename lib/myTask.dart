@@ -1,6 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:user_profile/main.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:user_profile/notification.dart';
+import 'package:user_profile/jobDetail.dart';
+
+import 'package:intl/intl.dart';
 
 class MyTasksPage extends StatefulWidget {
   const MyTasksPage({super.key});
@@ -8,6 +15,10 @@ class MyTasksPage extends StatefulWidget {
   @override
   State<MyTasksPage> createState() => _MyTasksPageState();
 }
+
+final storage = const FlutterSecureStorage();
+String? staffId;
+String? staffImageBase64;
 
 class _MyTasksPageState extends State<MyTasksPage>
     with SingleTickerProviderStateMixin {
@@ -17,6 +28,121 @@ class _MyTasksPageState extends State<MyTasksPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadStaffId();
+  }
+
+  Future<void> _loadStaffId() async {
+    staffId = await storage.read(key: "staffID");
+    if (staffId != null) {
+      // 🔹 Get staff image
+      final staffSnap = await FirebaseFirestore.instance
+          .collection('staff')
+          .where('staffID', isEqualTo: staffId)
+          .limit(1)
+          .get();
+
+      if (staffSnap.docs.isNotEmpty) {
+        final data = staffSnap.docs.first.data();
+        staffImageBase64 = data['profile_image']; // your image field name
+      }
+    }
+    setState(() {});
+  }
+
+  Future<List<Widget>> generateTaskCards(
+    String staffId, {
+    String? filterStatus,
+  }) async {
+    final assignmentsSnap = await FirebaseFirestore.instance
+        .collection('jobAssignments')
+        .where('staffID', isEqualTo: staffId)
+        .get();
+
+    List<Widget> taskCards = [];
+
+    for (var doc in assignmentsSnap.docs) {
+      final jobId = doc['jobID'];
+      final jobSnap = await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(jobId)
+          .get();
+
+      if (!jobSnap.exists) continue;
+
+      final jobData = jobSnap.data()!;
+      final status = jobData['jobStatus'];
+
+      if (filterStatus != null && status != filterStatus) continue;
+
+      Color statusColor;
+      Color statusTextColor;
+
+      switch (status) {
+        case 'Accepted':
+          statusColor = Color(0xFFD7C1F7);
+          statusTextColor = Color(0xFF7B3FD5);
+          break;
+        case 'In Progress':
+          statusColor = Colors.orange.shade100;
+          statusTextColor = Colors.orange.shade700;
+          break;
+        case 'Completed':
+          statusColor = Colors.green.shade100;
+          statusTextColor = Colors.green.shade700;
+          break;
+        default:
+          statusColor = Colors.grey;
+          statusTextColor = Colors.black;
+      }
+
+      // Fetch related collections (vehicles, customers)
+      final vehicleSnap = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(jobData['vehicleID'])
+          .get();
+      final vehicleData = vehicleSnap.data()!;
+      final customerSnap = await FirebaseFirestore.instance
+          .collection('customers')
+          .doc(vehicleData['custID'])
+          .get();
+      final customerName = customerSnap.data()?['custName'] ?? 'Unknown';
+
+      // Convert timestamp to readable date
+      final jobDate = (jobData['createdAt'] as Timestamp).toDate();
+      final formattedDate = "${jobDate.day}/${jobDate.month}/${jobDate.year}";
+
+      taskCards.add(
+        TaskCard(
+          jobID: jobId,
+          status: status,
+          statusColor: statusColor,
+          statusTextColor: statusTextColor,
+          name: customerName,
+          car: vehicleData['model'],
+          date: formattedDate,
+        ),
+      );
+    }
+
+    return taskCards;
+  }
+
+  Widget buildTaskList(String? filter) {
+    return FutureBuilder<List<Widget>>(
+      future: generateTaskCards(staffId!, filterStatus: filter),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(child: Text("No tasks found"));
+        }
+        return ListView(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 140),
+          children: snapshot.data!,
+        );
+      },
+    );
   }
 
   @override
@@ -28,7 +154,7 @@ class _MyTasksPageState extends State<MyTasksPage>
         children: [
           // Main content with SafeArea
           SafeArea(
-            bottom: false, // allow content under nav bar
+            bottom: false,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -37,10 +163,21 @@ class _MyTasksPageState extends State<MyTasksPage>
                   // Top Profile Section
                   Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 25,
-                        backgroundImage: AssetImage('assets/avatar.png'),
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage:
+                            (staffImageBase64 != null &&
+                                staffImageBase64!.isNotEmpty)
+                            ? MemoryImage(base64Decode(staffImageBase64!))
+                            : null,
+                        child:
+                            (staffImageBase64 == null ||
+                                staffImageBase64!.isEmpty)
+                            ? const Icon(Icons.person, color: Colors.grey)
+                            : null,
                       ),
+
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,7 +196,17 @@ class _MyTasksPageState extends State<MyTasksPage>
                         ],
                       ),
                       const Spacer(),
-                      const Icon(Icons.notifications_none, size: 28),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_none, size: 28),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationPage(),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -111,53 +258,29 @@ class _MyTasksPageState extends State<MyTasksPage>
 
                   // Task list
                   Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        bottom: 140, // give more space for floating nav bar
-                      ),
-                      children: const [
-                        TaskCard(
-                          status: "Accepted",
-                          statusColor: Color(0xFFD7C1F7),
-                          statusTextColor: Color(0xFF7B3FD5),
-                          name: "Ms Lim Jia Jia",
-                          car: "Perodua Myvi - WXY 4567",
-                          date: "Aug 30, 2025",
-                        ),
-                        TaskCard(
-                          status: "Accepted",
-                          statusColor: Color(0xFFD7C1F7),
-                          statusTextColor: Color(0xFF7B3FD5),
-                          name: "Ms Lim Jia Jia",
-                          car: "Perodua Myvi - WXY 4567",
-                          date: "Aug 30, 2025",
-                        ),
-                        TaskCard(
-                          status: "In Progress",
-                          statusColor: Color(0xFFFFE4B5),
-                          statusTextColor: Color(0xFFB87333),
-                          name: "Ms Wong Ean Ean",
-                          car: "Perodua Myvi - ABC 1234",
-                          date: "Aug 30, 2025",
-                        ),
-                        TaskCard(
-                          status: "In Progress",
-                          statusColor: Color(0xFFFFE4B5),
-                          statusTextColor: Color(0xFFB87333),
-                          name: "Ms Wong Ean Ean",
-                          car: "Perodua Myvi - ABC 1234",
-                          date: "Aug 30, 2025",
-                        ),
-                      ],
-                    ),
+                    child: staffId == null
+                        ? Center(child: CircularProgressIndicator())
+                        : TabBarView(
+                            controller: _tabController,
+                            children: [
+                              // All Tasks
+                              buildTaskList(null),
+
+                              // Accepted Tasks
+                              buildTaskList("Accepted"),
+
+                              // In Progress Tasks
+                              buildTaskList("In Progress"),
+
+                              // On Hold Tasks
+                              buildTaskList("On Hold"),
+                            ],
+                          ),
                   ),
                 ],
               ),
             ),
           ),
-
         ],
       ),
     );
@@ -166,6 +289,7 @@ class _MyTasksPageState extends State<MyTasksPage>
 
 class TaskCard extends StatelessWidget {
   final String status;
+  final String jobID;
   final Color statusColor;
   final Color statusTextColor;
   final String name;
@@ -174,6 +298,7 @@ class TaskCard extends StatelessWidget {
 
   const TaskCard({
     super.key,
+    required this.jobID,
     required this.status,
     required this.statusColor,
     required this.statusTextColor,
@@ -234,12 +359,25 @@ class TaskCard extends StatelessWidget {
                     color: Colors.black,
                     shape: BoxShape.circle,
                   ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(6.0),
-                    child: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6.0),
+                    child: InkWell(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => JobDetailsPage(jobID: jobID),
+                          ),
+                        );
+
+                        (context.findAncestorStateOfType<_MyTasksPageState>())
+                            ?.setState(() {});
+                      },
+                      child: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),

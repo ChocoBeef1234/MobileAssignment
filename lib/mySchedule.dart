@@ -1,113 +1,165 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+
+class JobDetail {
+  final String jobId;
+  final String status;
+  final DateTime date;
+  final String carModel;
+  final String plateNo;
+  final String customerName;
+
+  JobDetail({
+    required this.jobId,
+    required this.status,
+    required this.date,
+    required this.carModel,
+    required this.plateNo,
+    required this.customerName,
+  });
+}
 
 class MySchedulePage extends StatefulWidget {
   const MySchedulePage({super.key});
 
   @override
-  _MySchedulePageState createState() => _MySchedulePageState();
+  State<MySchedulePage> createState() => _MySchedulePageState();
 }
 
 class _MySchedulePageState extends State<MySchedulePage> {
-  int selectedTab = 0; // 0 = Today, 1 = Upcoming
-  int currentIndex = 1; // bottom nav index
+  final storage = const FlutterSecureStorage();
+  List<JobDetail> jobs = [];
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadJobs();
+  }
+
+  Future<void> _loadJobs() async {
+    try {
+      final staffId = await storage.read(key: 'staffID');
+      if (staffId == null) {
+        setState(() => loading = false);
+        return;
+      }
+
+      final jobAssignSnap = await FirebaseFirestore.instance
+          .collection('jobAssignments')
+          .where('staffID', isEqualTo: staffId)
+          .get();
+
+      List<JobDetail> jobDetails = [];
+
+      for (var doc in jobAssignSnap.docs) {
+        final jobID = doc['jobID'] as String;
+
+        // jobs collection
+        final jobSnap =
+            await FirebaseFirestore.instance.collection('jobs').doc(jobID).get();
+        if (!jobSnap.exists) continue;
+
+        final jobData = jobSnap.data()!;
+        final status = jobData['jobStatus'] ?? '';
+        final vehicleID = jobData['vehicleID'] ?? '';
+        DateTime date = DateTime.now();
+        if (jobData['createdAt'] is Timestamp) {
+          date = (jobData['createdAt'] as Timestamp).toDate();
+        }
+
+        // vehicles collection
+        final vehicleSnap = await FirebaseFirestore.instance
+            .collection('vehicles')
+            .doc(vehicleID)
+            .get();
+        if (!vehicleSnap.exists) continue;
+        final vehicleData = vehicleSnap.data()!;
+        final model = vehicleData['model'] ?? '';
+        final plateNo = vehicleData['plateNo'] ?? '';
+        final custID = vehicleData['custID'] ?? '';
+
+        // customers collection
+        final custSnap = await FirebaseFirestore.instance
+            .collection('customers')
+            .doc(custID)
+            .get();
+        String custName = '';
+        if (custSnap.exists) {
+          custName = custSnap['custName'] ?? '';
+        }
+
+        jobDetails.add(JobDetail(
+          jobId: jobID,
+          status: status,
+          date: date,
+          carModel: model,
+          plateNo: plateNo,
+          customerName: custName,
+        ));
+      }
+
+      setState(() {
+        jobs = jobDetails;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading jobs: $e');
+      setState(() => loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              const Text(
-                "My Schedule",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
+    // filter today/upcoming
+    final now = DateTime.now();
+    final todayJobs = jobs.where((j) =>
+        j.date.year == now.year &&
+        j.date.month == now.month &&
+        j.date.day == now.day).toList();
 
-              // Segmented Control
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    _buildSegmentButton("Today", 0),
-                    _buildSegmentButton("Up Coming", 1),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+    final upcomingJobs = jobs.where((j) => j.date.isAfter(
+        DateTime(now.year, now.month, now.day, 23, 59, 59))).toList();
 
-              // Cards
-              Expanded(
-                child: ListView(
-                  children: [
-                    _buildScheduleCard(
-                      status: "Accepted",
-                      statusColor: Colors.purple.shade200,
-                      name: "Ms Lim Jia Jia",
-                      vehicle: "Perodua Myvi - WXY 4567",
-                      date: "Aug 30, 2025",
-                    ),
-                    const SizedBox(height: 12),
-                    _buildScheduleCard(
-                      status: "In Progress",
-                      statusColor: Colors.orange.shade200,
-                      name: "Ms Wong Ean Ean",
-                      vehicle: "Perodua Myvi - ABC 1234",
-                      date: "Aug 30, 2025",
-                    ),
-                  ],
-                ),
-              ),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("My Schedule"),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: "Today"),
+              Tab(text: "Upcoming"),
             ],
           ),
         ),
-      ),
-
-      // Bottom Navigation
-    );
-  }
-
-  // Segmented Button Widget
-  Widget _buildSegmentButton(String text, int index) {
-    bool isSelected = selectedTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => selectedTab = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.black : Colors.transparent,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            text,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
+        body: loading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                children: [
+                  _buildJobList(todayJobs, 'No jobs for today'),
+                  _buildJobList(upcomingJobs, 'No upcoming jobs'),
+                ],
+              ),
       ),
     );
   }
 
-  // Schedule Card Widget
-  Widget _buildScheduleCard({
-    required String status,
-    required Color statusColor,
-    required String name,
-    required String vehicle,
-    required String date,
-  }) {
+  Widget _buildJobList(List<JobDetail> list, String emptyMsg) {
+    if (list.isEmpty) {
+      return Center(child: Text(emptyMsg));
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) => _buildJobCard(list[index]),
+    );
+  }
+
+  Widget _buildJobCard(JobDetail job) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -117,7 +169,7 @@ class _MySchedulePageState extends State<MySchedulePage> {
           BoxShadow(
             color: Colors.black12,
             blurRadius: 4,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           )
         ],
       ),
@@ -127,46 +179,38 @@ class _MySchedulePageState extends State<MySchedulePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Status label
+                // Status
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor,
+                    color: _statusColor(job.status),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    status,
+                    job.status,
                     style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black),
                   ),
                 ),
                 const SizedBox(height: 8),
-
-                // Name & Vehicle
-                Text(
-                  name,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  vehicle,
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                ),
+                Text(job.customerName,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                Text("${job.carModel} - ${job.plateNo}",
+                    style:
+                        const TextStyle(fontSize: 14, color: Colors.black87)),
                 const SizedBox(height: 8),
-
-                // Date
                 Row(
                   children: [
                     const Icon(Icons.calendar_today,
                         size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(
-                      date,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
+                    Text(DateFormat('MMM dd, yyyy').format(job.date),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ],
@@ -178,23 +222,16 @@ class _MySchedulePageState extends State<MySchedulePage> {
     );
   }
 
-  // Bottom Nav Icon Widget
-  Widget _buildNavIcon(IconData icon, int index) {
-    bool isSelected = currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => currentIndex = index),
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          size: 26,
-          color: isSelected ? Colors.black : Colors.white54,
-        ),
-      ),
-    );
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return Colors.purple.shade200;
+      case 'In Progress':
+        return Colors.orange.shade200;
+      case 'completed':
+        return Colors.green.shade200;
+      default:
+        return Colors.grey.shade300;
+    }
   }
 }
