@@ -167,9 +167,9 @@ class _SignatureFeedbackPageState extends State<SignatureFeedbackPage> {
                                 controller: _feedbackController,
                                 maxLines: 8,
                                 decoration: InputDecoration(
-                                  hintText: 'Good! Good!',
+                                  hintText: 'Write Your Feedback',
                                   hintStyle: TextStyle(
-                                    color: Colors.grey[400],
+                                    color: Colors.black,
                                     fontSize: 14,
                                   ),
                                   border: InputBorder.none,

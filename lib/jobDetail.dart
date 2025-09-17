@@ -10,6 +10,7 @@ import 'firebase.dart';
 
 class JobDetailsPage extends StatefulWidget {
   const JobDetailsPage({super.key, this.jobID = ''});
+
   final String jobID;
 
   @override
@@ -353,120 +354,129 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                               ),
 
                             // Signature and Feedback Section
-                            SizedBox(height: 24),
-                            Row(
-                              children: [
-                                Text(
-                                  'Signature and Feedback',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Spacer(),
-                                if (signatureData == null &&
-                                    feedbackData == null)
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () async {
-                                      final result = await Navigator.of(context)
-                                          .push(
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  SignatureFeedbackPage(
-                                                    jobID: widget.jobID,
-                                                  ),
-                                            ),
-                                          );
-                                      if (result == true) {
-                                        _refreshJobDetails();
-                                      }
-                                    },
-                                    child: Icon(
-                                      Icons.edit_rounded,
-                                      size: 28,
-                                      color: Colors.grey[400],
+                            if (job?['jobStatus']?.toString().toLowerCase() ==
+                                'completed') ...[
+                              SizedBox(height: 24),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Signature and Feedback',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
+                                  Spacer(),
+                                  if (signatureData == null &&
+                                      feedbackData == null)
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(16),
+                                      onTap: () async {
+                                        final result =
+                                            await Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    SignatureFeedbackPage(
+                                                      jobID: widget.jobID,
+                                                    ),
+                                              ),
+                                            );
+                                        if (result == true) {
+                                          _refreshJobDetails();
+                                        }
+                                      },
+                                      child: Icon(
+                                        Icons.edit_rounded,
+                                        size: 28,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+
+                              // Signature Display
+                              if (signatureData != null) ...[
+                                Text(
+                                  'Signature',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Container(
+                                  width: double.infinity,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.memory(
+                                      _base64ToUint8List(signatureData),
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 16),
                               ],
-                            ),
-                            SizedBox(height: 8),
 
-                            // Signature Display
-                            if (signatureData != null) ...[
-                              Text(
-                                'Signature',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 13,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Container(
-                                width: double.infinity,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey[300]!),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.memory(
-                                    _base64ToUint8List(signatureData),
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                            ],
-
-                            // Feedback Display
-                            if (feedbackData != null) ...[
-                              Text(
-                                'Feedback',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 13,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey[300]!),
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: Colors.grey[50],
-                                ),
-                                child: Text(
-                                  feedbackData,
+                              // Feedback Display
+                              if (feedbackData != null) ...[
+                                Text(
+                                  'Feedback',
                                   style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[700],
+                                    color: Colors.grey[600],
+                                    fontSize: 13,
                                   ),
                                 ),
-                              ),
-                            ],
+                                SizedBox(height: 8),
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: Colors.grey[50],
+                                  ),
+                                  child: Text(
+                                    feedbackData,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ],
 
-                            if (signatureData == null && feedbackData == null)
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey[300]!),
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: Colors.grey[50],
-                                ),
-                                child: Text(
-                                  'No signature or feedback provided yet.',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                    fontStyle: FontStyle.italic,
+                              if (signatureData == null && feedbackData == null)
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: Colors.grey[50],
                                   ),
-                                  textAlign: TextAlign.center,
+                                  child: Text(
+                                    'No signature or feedback provided yet.',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[500],
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
-                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -480,16 +490,19 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                     height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: job?['jobStatus']?.toString().toLowerCase() == 'completed'
+                            ? Colors.grey[400] // Disabled color
+                            : Colors.black, // Active color
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(24),
                         ),
                       ),
-                      onPressed: () async {
+                      onPressed: job?['jobStatus']?.toString().toLowerCase() == 'completed'
+                          ? null // Disable button when completed
+                          : () async {
                         final result = await Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) =>
-                                JobStatusPage(jobID: widget.jobID),
+                            builder: (context) => JobStatusPage(jobID: widget.jobID),
                           ),
                         );
                         if (result == true) {
@@ -497,11 +510,15 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                         }
                       },
                       child: Text(
-                        'Edit Status',
+                        job?['jobStatus']?.toString().toLowerCase() == 'completed'
+                            ? 'Status Completed' // Changed text when completed
+                            : 'Edit Status',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFE6D6FA),
+                          color: job?['jobStatus']?.toString().toLowerCase() == 'completed'
+                              ? Colors.grey[600] // Disabled text color
+                              : Color(0xFFE6D6FA), // Active text color
                         ),
                       ),
                     ),
