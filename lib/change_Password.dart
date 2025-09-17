@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -16,12 +17,71 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool showNew = false;
   bool showConfirm = false;
 
+  bool loading = false;
+
   @override
   void dispose() {
     oldController.dispose();
     newController.dispose();
     confirmController.dispose();
     super.dispose();
+  }
+
+  Future<void> _changePassword() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _showSnackBar('No user logged in.');
+      return;
+    }
+
+    final oldPassword = oldController.text.trim();
+    final newPassword = newController.text.trim();
+    final confirmPassword = confirmController.text.trim();
+
+    if (newPassword.isEmpty || confirmPassword.isEmpty || oldPassword.isEmpty) {
+      _showSnackBar('Please fill in all fields.');
+      return;
+    }
+    if (newPassword != confirmPassword) {
+      _showSnackBar('New passwords do not match.');
+      return;
+    }
+
+    setState(() => loading = true);
+
+    try {
+      // Reauthenticate user first
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: oldPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // Now update password
+      await user.updatePassword(newPassword);
+
+      _showSnackBar('Password updated successfully!');
+      Navigator.pop(context); // back to previous screen
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        _showSnackBar('Old password is incorrect.');
+      } else if (e.code == 'weak-password') {
+        _showSnackBar('New password is too weak.');
+      } else {
+        _showSnackBar('Error: ${e.message}');
+      }
+    } catch (e) {
+      _showSnackBar('Error: $e');
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  void _showSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   @override
@@ -61,15 +121,27 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               const SizedBox(height: 24),
 
               _buildLabel('Old Password'),
-              _buildPasswordField(controller: oldController, visible: showOld, onToggle: () => setState(() => showOld = !showOld)),
+              _buildPasswordField(
+                controller: oldController,
+                visible: showOld,
+                onToggle: () => setState(() => showOld = !showOld),
+              ),
               const SizedBox(height: 20),
 
               _buildLabel('New Password'),
-              _buildPasswordField(controller: newController, visible: showNew, onToggle: () => setState(() => showNew = !showNew)),
+              _buildPasswordField(
+                controller: newController,
+                visible: showNew,
+                onToggle: () => setState(() => showNew = !showNew),
+              ),
               const SizedBox(height: 20),
 
               _buildLabel('Confirm New Password'),
-              _buildPasswordField(controller: confirmController, visible: showConfirm, onToggle: () => setState(() => showConfirm = !showConfirm)),
+              _buildPasswordField(
+                controller: confirmController,
+                visible: showConfirm,
+                onToggle: () => setState(() => showConfirm = !showConfirm),
+              ),
 
               const SizedBox(height: 40),
 
@@ -83,10 +155,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       borderRadius: BorderRadius.circular(28),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Done', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                  onPressed: loading ? null : _changePassword,
+                  child: loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Change Password',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600)),
                 ),
               ),
 
@@ -103,17 +179,26 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: TextStyle(color: Colors.grey[700], fontSize: 12, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: Colors.grey[700],
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 
-  Widget _buildPasswordField({required TextEditingController controller, required bool visible, required VoidCallback onToggle}) {
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required bool visible,
+    required VoidCallback onToggle,
+  }) {
     return TextField(
       controller: controller,
       obscureText: !visible,
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -124,7 +209,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
         suffixIcon: IconButton(
           onPressed: onToggle,
-          icon: Icon(visible ? Icons.visibility_off : Icons.visibility, color: Colors.grey[700]),
+          icon: Icon(
+            visible ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey[700],
+          ),
         ),
         filled: true,
         fillColor: Colors.white,

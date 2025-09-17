@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:user_profile/main.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:user_profile/main.dart'; // your main screen
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscure = true;
   bool _loading = false;
   String? _error;
+
   Future<void> clearAllData() async {
     await _secureStorage.deleteAll(); // Clears all stored data
   }
@@ -26,34 +27,36 @@ class _LoginPageState extends State<LoginPage> {
       _loading = true;
       _error = null;
     });
-    clearAllData();
+    await clearAllData();
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
-      final passwordHash = 'hash:$password';
 
-      final snapshot = await FirebaseFirestore.instance
-          .collection('staff')
-          .where('staffEmail', isEqualTo: email)
-          .where('staffPasswordHash', isEqualTo: passwordHash)
-          .get();
+      // Firebase Authentication Sign In
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
 
-      if (snapshot.docs.isNotEmpty) {
-        final staffId = snapshot.docs.first.id;
-
-        // Save staff ID securely
-        await _secureStorage.write(key: 'staffID', value: staffId);
-
-        // Navigate to main screen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      } else {
-        setState(() {
-          _error = 'Invalid email or password';
-        });
+      // Save UID securely
+      final uid = userCredential.user?.uid;
+      if (uid != null) {
+        await _secureStorage.write(key: 'staffID', value: uid);
       }
+
+      // Navigate to main screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String msg = 'Login failed';
+      if (e.code == 'user-not-found') {
+        msg = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        msg = 'Incorrect password.';
+      }
+      setState(() {
+        _error = msg;
+      });
     } catch (e) {
       setState(() {
         _error = 'Error: $e';
@@ -75,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
             ClipPath(
               clipper: WaveBottomClipper(),
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage("assets/loginBackground.jpg"),
                     fit: BoxFit.fill,

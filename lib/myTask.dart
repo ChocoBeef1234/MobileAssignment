@@ -330,14 +330,16 @@ class TaskCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(6.0),
                     child: InkWell(
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                JobDetailsPage(jobID: jobID),
+                            builder: (context) => JobDetailsPage(jobID: jobID),
                           ),
                         );
+
+                        (context.findAncestorStateOfType<_MyTasksPageState>())
+                            ?.setState(() {});
                       },
                       child: const Icon(
                         Icons.arrow_forward_ios,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:user_profile/showImage.dart';
 
 class ServiceHistoryPage extends StatelessWidget {
   final String jobID;
@@ -20,7 +21,6 @@ class ServiceHistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('[DEBUG] ServiceHistoryPage jobID: ' + jobID);
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
       appBar: PreferredSize(
@@ -46,11 +46,18 @@ class ServiceHistoryPage extends StatelessWidget {
               Spacer(),
               IconButton(
                 icon: Icon(
-                  Icons.camera_alt_outlined,
+                  Icons.image_outlined,
                   color: Colors.black,
                   size: 22,
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => JobImagesPage(jobID: jobID),
+                    ),
+                  );
+                },
               ),
             ],
           ),
