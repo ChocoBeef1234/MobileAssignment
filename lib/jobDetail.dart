@@ -327,7 +327,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                       isScrollControlled: true,
                                       backgroundColor: Colors.transparent,
                                       builder: (context) {
-                                        return AssignedPartsBottomSheet();
+                                        return AssignedPartsBottomSheet(jobID: widget.jobID); // Pass jobID here
                                       },
                                     );
                                   },
