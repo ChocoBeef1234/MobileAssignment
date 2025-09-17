@@ -83,8 +83,12 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusTextColor = Color(0xFF7B3FD5);
           break;
         case 'In Progress':
-          statusColor = Color(0xFFFFE4B5);
-          statusTextColor = Color(0xFFB87333);
+          statusColor = Colors.orange.shade100;
+          statusTextColor = Colors.orange.shade700;
+          break;
+        case 'Completed':
+          statusColor = Colors.green.shade100;
+          statusTextColor = Colors.green.shade700;
           break;
         default:
           statusColor = Colors.grey;
