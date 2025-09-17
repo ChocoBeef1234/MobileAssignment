@@ -36,6 +36,40 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
     }
   }
 
+  void _setToday() {
+    final today = DateTime.now();
+    setState(() {
+      fromDate = DateTime(today.year, today.month, today.day);
+      toDate = DateTime(today.year, today.month, today.day, 23, 59, 59);
+    });
+  }
+
+  void _setThisWeek() {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final endOfWeek = startOfWeek.add(Duration(days: 6));
+
+    setState(() {
+      fromDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      toDate = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59);
+    });
+  }
+
+  void _setThisMonth() {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+    setState(() {
+      fromDate = startOfMonth;
+      toDate = DateTime(endOfMonth.year, endOfMonth.month, endOfMonth.day, 23, 59, 59);
+    });
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -78,10 +112,13 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              fromDate == null
-                                  ? "Select date"
-                                  : "${fromDate!.day}-${fromDate!.month}-${fromDate!.year}",
+                            Flexible(
+                              child: Text(
+                                fromDate == null
+                                    ? "Select date"
+                                    : _formatDate(fromDate!),
+                                style: TextStyle(fontSize: 12),
+                              ),
                             ),
                             const Icon(Icons.calendar_today, size: 18),
                           ],
@@ -115,10 +152,13 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              toDate == null
-                                  ? "Select date"
-                                  : "${toDate!.day}-${toDate!.month}-${toDate!.year}",
+                            Flexible(
+                              child: Text(
+                                toDate == null
+                                    ? "Select date"
+                                    : _formatDate(toDate!),
+                                style: TextStyle(fontSize: 12),
+                              ),
                             ),
                             const Icon(Icons.calendar_today, size: 18),
                           ],
@@ -132,7 +172,6 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
 
             const SizedBox(height: 8),
 
-            // Quick select buttons
             Row(
               children: [
                 OutlinedButton(
@@ -146,7 +185,7 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: _setToday,
                   child: const Text("Today", style: TextStyle(fontSize: 12)),
                 ),
                 const SizedBox(width: 6),
@@ -161,7 +200,7 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: _setThisWeek,
                   child: const Text(
                     "This Week",
                     style: TextStyle(fontSize: 12),
@@ -180,7 +219,7 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: _setThisMonth,
                   child: const Text(
                     "This Month",
                     style: TextStyle(fontSize: 12),
@@ -202,10 +241,10 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
               items: sortOptions
                   .map(
                     (e) => DropdownMenuItem(
-                      value: e,
-                      child: Text(e, style: TextStyle(fontSize: 12)),
-                    ),
-                  )
+                  value: e,
+                  child: Text(e, style: TextStyle(fontSize: 12)),
+                ),
+              )
                   .toList(),
               onChanged: (value) {
                 setState(() => sortBy = value!);
@@ -252,7 +291,10 @@ class _NotificationFilterDialogState extends State<NotificationFilterDialog> {
                       "sortBy": sortBy,
                     });
                   },
-                  child: const Text("Apply Filter"),
+                  child: const Text(
+                    "Apply Filter",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
