@@ -237,6 +237,12 @@ class _NotificationPageState extends State<NotificationPage> {
 
                       if (result != null) {
                         _applyFilter(result);
+                      } else {
+                        // Handle reset - clear all filters
+                        setState(() {
+                          _currentFilter = null;
+                          _initializeNotificationStream();
+                        });
                       }
                     },
                   ),
