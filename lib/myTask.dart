@@ -19,6 +19,8 @@ class MyTasksPage extends StatefulWidget {
 final storage = const FlutterSecureStorage();
 String? staffId;
 String? staffImageBase64;
+String? staffName;
+String? staffContactNo;
 
 class _MyTasksPageState extends State<MyTasksPage>
     with SingleTickerProviderStateMixin {
@@ -43,16 +45,36 @@ class _MyTasksPageState extends State<MyTasksPage>
 
       if (staffSnap.docs.isNotEmpty) {
         final data = staffSnap.docs.first.data();
-        staffImageBase64 = data['profile_image']; // your image field name
+        staffImageBase64 = data['profile_image'];
+        final staffData = staffSnap.docs.first.data();
+        staffName = staffData['staffName'] as String?;
+        final staffPho = staffSnap.docs.first.data();
+        staffContactNo = staffPho['staffContactNo'] as String?;
       }
     }
     setState(() {});
   }
 
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return "Time In: --:--";
+
+    final dateTime = timestamp.toDate();
+    final timeFormat = DateFormat('HH:mm');
+    return "Time In: ${timeFormat.format(dateTime)}";
+  }
+
+  String _formatTimeOut(Timestamp? timestamp) {
+    if (timestamp == null) return "Time Out: --:--";
+
+    final dateTime = timestamp.toDate();
+    final timeFormat = DateFormat('HH:mm');
+    return "Time Out: ${timeFormat.format(dateTime)}";
+  }
+
   Future<List<Widget>> generateTaskCards(
-    String staffId, {
-    String? filterStatus,
-  }) async {
+      String staffId, {
+        String? filterStatus,
+      }) async {
     final assignmentsSnap = await FirebaseFirestore.instance
         .collection('jobAssignments')
         .where('staffID', isEqualTo: staffId)
@@ -90,6 +112,10 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusColor = Colors.green.shade100;
           statusTextColor = Colors.green.shade700;
           break;
+        case 'Completed':
+          statusColor = Color(0xFFD4F8E8);
+          statusTextColor = Color(0xFF059669);
+          break;
         default:
           statusColor = Colors.grey;
           statusTextColor = Colors.black;
@@ -111,6 +137,10 @@ class _MyTasksPageState extends State<MyTasksPage>
       final jobDate = (jobData['createdAt'] as Timestamp).toDate();
       final formattedDate = "${jobDate.day}/${jobDate.month}/${jobDate.year}";
 
+      // Get car in and car out times
+      final carInTime = jobData['carIn'] as Timestamp?;
+      final carOutTime = jobData['carOut'] as Timestamp?;
+
       taskCards.add(
         TaskCard(
           jobID: jobId,
@@ -118,8 +148,10 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusColor: statusColor,
           statusTextColor: statusTextColor,
           name: customerName,
-          car: vehicleData['model'],
+          car: "${vehicleData['model']} - ${vehicleData['plateNo']}",
           date: formattedDate,
+          carInTime: carInTime,
+          carOutTime: carOutTime,
         ),
       );
     }
@@ -160,7 +192,7 @@ class _MyTasksPageState extends State<MyTasksPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Profile Section
+
                   Row(
                     children: [
                       CircleAvatar(
@@ -181,17 +213,17 @@ class _MyTasksPageState extends State<MyTasksPage>
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
-                            "Hi, Fahmi 👋",
-                            style: TextStyle(
+                            "Hi, $staffName 👋",
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            "Today is: July 17, 2025",
-                            style: TextStyle(color: Colors.grey),
+                            "Phone Number: $staffContactNo",
+                            style: const TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -261,21 +293,21 @@ class _MyTasksPageState extends State<MyTasksPage>
                     child: staffId == null
                         ? Center(child: CircularProgressIndicator())
                         : TabBarView(
-                            controller: _tabController,
-                            children: [
-                              // All Tasks
-                              buildTaskList(null),
+                      controller: _tabController,
+                      children: [
+                        // All Tasks
+                        buildTaskList(null),
 
-                              // Accepted Tasks
-                              buildTaskList("Accepted"),
+                        // Accepted Tasks
+                        buildTaskList("Accepted"),
 
-                              // In Progress Tasks
-                              buildTaskList("In Progress"),
+                        // In Progress Tasks
+                        buildTaskList("In Progress"),
 
-                              // On Hold Tasks
-                              buildTaskList("On Hold"),
-                            ],
-                          ),
+                        // On Hold Tasks
+                        buildTaskList("On Hold"),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -295,6 +327,8 @@ class TaskCard extends StatelessWidget {
   final String name;
   final String car;
   final String date;
+  final Timestamp? carInTime;
+  final Timestamp? carOutTime;
 
   const TaskCard({
     super.key,
@@ -305,7 +339,17 @@ class TaskCard extends StatelessWidget {
     required this.name,
     required this.car,
     required this.date,
+    this.carInTime,
+    this.carOutTime,
   });
+
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return "--:--";
+
+    final dateTime = timestamp.toDate();
+    final timeFormat = DateFormat('HH:mm');
+    return timeFormat.format(dateTime);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -340,6 +384,29 @@ class TaskCard extends StatelessWidget {
             ),
             Text(car, style: const TextStyle(color: Colors.black87)),
             const SizedBox(height: 8),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Time In: ${_formatTime(carInTime)}",
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Time Out: ${_formatTime(carOutTime)}",
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
