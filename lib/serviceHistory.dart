@@ -21,7 +21,6 @@ class ServiceHistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('[DEBUG] ServiceHistoryPage jobID: ' + jobID);
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
       appBar: PreferredSize(

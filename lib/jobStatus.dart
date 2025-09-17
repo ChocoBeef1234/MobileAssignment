@@ -237,7 +237,7 @@ class _JobStatusPageState extends State<JobStatusPage> {
                   ),
                   onPressed: () async {
                     await _saveStatus();
-                    if (mounted) Navigator.of(context).pop();
+                    if (mounted) Navigator.of(context).pop(true);
                   },
                   child: Text(
                     'Save',
