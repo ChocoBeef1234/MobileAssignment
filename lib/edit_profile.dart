@@ -1,6 +1,10 @@
+import 'dart:convert'; // for base64
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart'; // to pick image
 import 'package:user_profile/change_Password.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -12,6 +16,7 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final ImagePicker _picker = ImagePicker();
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
@@ -19,6 +24,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   bool loading = true;
   String? docId; // Firestore document ID of staff
+  String? profileBase64; // holds the Base64 image string
 
   @override
   void initState() {
@@ -49,6 +55,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         nameController.text = data['staffName'] ?? '';
         phoneController.text = data['staffContactNo'] ?? '';
         emailController.text = data['staffEmail'] ?? '';
+        profileBase64 = data['profile_image']; // your base64 string
       }
     } catch (e) {
       debugPrint('Error loading staff info: $e');
@@ -65,16 +72,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'staffName': nameController.text.trim(),
         'staffContactNo': phoneController.text.trim(),
         'staffEmail': emailController.text.trim(),
+        'profile_image': profileBase64 ?? '', // save updated base64 image
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated successfully')),
       );
-      Navigator.pop(context); // Go back to profile page
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating profile: $e')),
       );
+    }
+  }
+
+  /// 🔹 Pick new image from gallery and update `profileBase64`
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      final bytes = await picked.readAsBytes();
+      final base64String = base64Encode(bytes);
+      setState(() => profileBase64 = base64String);
     }
   }
 
@@ -92,6 +110,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
+    }
+
+    // Convert base64 to bytes if not null
+    Uint8List? imageBytes;
+    if (profileBase64 != null && profileBase64!.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(profileBase64!);
+      } catch (_) {
+        imageBytes = null;
+      }
     }
 
     return Scaffold(
@@ -123,13 +151,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
               ),
 
-              // Avatar overlapping
+              // Avatar overlapping — tap to change
               Transform.translate(
                 offset: const Offset(0, -40),
-                child: CircleAvatar(
-                  radius: 52,
-                  backgroundColor: Colors.grey[300],
-                  child: const Icon(Icons.person, size: 56, color: Colors.grey),
+                child: GestureDetector(
+                  onTap: _pickImage, // 🔹 tap to select new image
+                  child: CircleAvatar(
+                    radius: 52,
+                    backgroundColor: Colors.grey[300],
+                    backgroundImage: imageBytes != null
+                        ? MemoryImage(imageBytes)
+                        : null,
+                    child: imageBytes == null
+                        ? const Icon(Icons.person,
+                            size: 56, color: Colors.grey)
+                        : null,
+                  ),
                 ),
               ),
 

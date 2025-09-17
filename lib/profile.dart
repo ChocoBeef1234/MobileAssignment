@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -21,6 +24,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int totalJobs = 0;
   double avgCompletionTime = 0.0;
   bool loading = true;
+  String? profileBase64; // 🔹 holds Base64 from Firestore
 
   @override
   void initState() {
@@ -65,6 +69,7 @@ class _ProfilePageState extends State<ProfilePage> {
         phone = staffData['staffContactNo'] ?? '';
         email = staffData['staffEmail'] ?? '';
         rating = (staffData['rating'] ?? 0).toDouble();
+        profileBase64 = staffData['profile_image'];
       }
 
       // 🔹 Fetch jobs assigned to staff
@@ -112,6 +117,14 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     if (loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    Uint8List? imageBytes;
+    if (profileBase64 != null && profileBase64!.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(profileBase64!);
+      } catch (e) {
+        debugPrint('Error decoding base64: $e');
+      }
     }
 
     return Scaffold(
@@ -197,11 +210,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: CircleAvatar(
                       radius: 56,
                       backgroundColor: Colors.grey[300],
-                      child: const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
+                      backgroundImage: imageBytes != null
+                          ? MemoryImage(imageBytes)
+                          : null,
+                      child: imageBytes == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.grey,
+                            )
+                          : null,
                     ),
                   ),
                 ),
