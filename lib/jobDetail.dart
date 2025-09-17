@@ -161,7 +161,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Phone',
@@ -218,7 +218,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Date',
@@ -254,7 +254,10 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                         ),
                                       ),
                                       SizedBox(height: 14),
-                                      Row(
+                                      Wrap(
+                                        spacing: 8,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
                                         children: [
                                           Text(
                                             'Job Status',
@@ -263,7 +266,6 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                               fontSize: 13,
                                             ),
                                           ),
-                                          SizedBox(width: 8),
                                           Container(
                                             padding: EdgeInsets.symmetric(
                                               horizontal: 12,
@@ -272,7 +274,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                             decoration: BoxDecoration(
                                               color: Color(0xFFE6D6FA),
                                               borderRadius:
-                                              BorderRadius.circular(16),
+                                                  BorderRadius.circular(16),
                                             ),
                                             child: Text(
                                               job?['jobStatus'] ?? '-',
@@ -339,7 +341,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                             SizedBox(height: 2),
                             if (parts != null)
                               ...parts.map(
-                                    (part) => Padding(
+                                (part) => Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 2.0,
                                   ),
@@ -362,15 +364,20 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                   ),
                                 ),
                                 Spacer(),
-                                if (signatureData == null && feedbackData == null)
+                                if (signatureData == null &&
+                                    feedbackData == null)
                                   InkWell(
                                     borderRadius: BorderRadius.circular(16),
                                     onTap: () async {
-                                      final result = await Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => SignatureFeedbackPage(jobID: widget.jobID),
-                                        ),
-                                      );
+                                      final result = await Navigator.of(context)
+                                          .push(
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  SignatureFeedbackPage(
+                                                    jobID: widget.jobID,
+                                                  ),
+                                            ),
+                                          );
                                       if (result == true) {
                                         _refreshJobDetails();
                                       }
@@ -557,13 +564,18 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
     String? serviceDescription;
     if (job['serviceID'] != null) {
       print('Job serviceID: \'${job['serviceID']}\'');
-      final serviceDoc = await db.collection('services').doc(job['serviceID']).get();
+      final serviceDoc = await db
+          .collection('services')
+          .doc(job['serviceID'])
+          .get();
       if (serviceDoc.exists) {
         final serviceData = serviceDoc.data();
         serviceDescription = serviceData?['serviceDescription'] ?? '';
         print('Fetched serviceDescription: \'$serviceDescription\'');
       } else {
-        print('No service document found for serviceID: \'${job['serviceID']}\'');
+        print(
+          'No service document found for serviceID: \'${job['serviceID']}\'',
+        );
       }
     } else {
       print('No serviceID found in job document');
@@ -593,7 +605,8 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
   }
 
   // Helper method to convert base64 string to Uint8List
-  Uint8List _base64ToUint8List(String base64String) {  // Change return type from Object to Uint8List
+  Uint8List _base64ToUint8List(String base64String) {
+    // Change return type from Object to Uint8List
     try {
       return const Base64Decoder().convert(base64String);
     } catch (e) {
