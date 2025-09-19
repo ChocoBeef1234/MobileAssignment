@@ -45,11 +45,7 @@ class ServiceHistoryPage extends StatelessWidget {
               ),
               Spacer(),
               IconButton(
-                icon: Icon(
-                  Icons.image_outlined,
-                  color: Colors.black,
-                  size: 22,
-                ),
+                icon: Icon(Icons.image_outlined, color: Colors.black, size: 22),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -152,14 +148,26 @@ class ServiceHistoryPage extends StatelessWidget {
                             ),
                           );
                         }
-                        final records = snapshot.data!.docs;
+                        // Always sort records by serviceDate descending
+                        final records = List<Map<String, dynamic>>.from(
+                          snapshot.data!.docs.map(
+                            (doc) => doc.data() as Map<String, dynamic>,
+                          ),
+                        );
+                        records.sort((a, b) {
+                          final aDate = a['serviceDate'];
+                          final bDate = b['serviceDate'];
+                          if (aDate is Timestamp && bDate is Timestamp) {
+                            return bDate.compareTo(aDate);
+                          }
+                          return 0;
+                        });
                         return ListView.separated(
                           itemCount: records.length,
                           separatorBuilder: (context, idx) =>
                               SizedBox(height: 16),
                           itemBuilder: (context, idx) {
-                            final record =
-                                records[idx].data() as Map<String, dynamic>;
+                            final record = records[idx];
                             final date = _formatDate(record['serviceDate']);
                             final serviceID = record['serviceID'] ?? '-';
                             final serviceDesc =
@@ -172,6 +180,7 @@ class ServiceHistoryPage extends StatelessWidget {
                                         .isNotEmpty)
                                 ? record['technicianNotes']
                                 : '-';
+                            final status = record['status'] ?? '-';
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -205,6 +214,15 @@ class ServiceHistoryPage extends StatelessWidget {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Status: $status',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
                                           ),
                                         ),
                                         SizedBox(height: 4),
@@ -274,4 +292,14 @@ class ServiceHistoryPage extends StatelessWidget {
     ];
     return months[month];
   }
+}
+
+class QuerySnapshotFake implements QuerySnapshot {
+  @override
+  final List<QueryDocumentSnapshot> docs;
+  QuerySnapshotFake(this.docs);
+  // The rest of the QuerySnapshot interface can throw UnimplementedError
+  @override
+  // ignore: no_leading_underscores_for_local_identifiers
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

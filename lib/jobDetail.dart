@@ -267,6 +267,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                               fontSize: 13,
                                             ),
                                           ),
+                                          SizedBox(width: 8),
                                           Container(
                                             padding: EdgeInsets.symmetric(
                                               horizontal: 12,
@@ -287,6 +288,18 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                           ),
                                         ],
                                       ),
+                                      if (job?['statusChange'] != null) ...[
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Status Changed: ' +
+                                              _formatDate(job?['statusChange']),
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -321,20 +334,55 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                 Spacer(),
                                 InkWell(
                                   borderRadius: BorderRadius.circular(16),
-                                  onTap: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (context) {
-                                        return AssignedPartsBottomSheet(jobID: widget.jobID); // Pass jobID here
-                                      },
-                                    );
-                                  },
+                                  onTap:
+                                      (job?['jobStatus']
+                                                  ?.toString()
+                                                  .toLowerCase() ==
+                                              'waiting' ||
+                                          job?['jobStatus']
+                                                  ?.toString()
+                                                  .toLowerCase() ==
+                                              'completed' ||
+                                          job?['jobStatus']
+                                                  ?.toString()
+                                                  .toLowerCase() ==
+                                              'cancelled')
+                                      ? null
+                                      : () async {
+                                          final result =
+                                              await showModalBottomSheet(
+                                                context: context,
+                                                isScrollControlled: true,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                builder: (context) {
+                                                  return AssignedPartsBottomSheet(
+                                                    jobID: widget.jobID,
+                                                  );
+                                                },
+                                              );
+                                          if (result == true) {
+                                            _refreshJobDetails();
+                                          }
+                                        },
                                   child: Icon(
                                     Icons.edit_rounded,
                                     size: 28,
-                                    color: Colors.grey[400],
+                                    color:
+                                        (job?['jobStatus']
+                                                    ?.toString()
+                                                    .toLowerCase() ==
+                                                'waiting' ||
+                                            job?['jobStatus']
+                                                    ?.toString()
+                                                    .toLowerCase() ==
+                                                'completed' ||
+                                            job?['jobStatus']
+                                                    ?.toString()
+                                                    .toLowerCase() ==
+                                                'cancelled')
+                                        ? Colors.grey[300]
+                                        : Colors.grey[400],
                                   ),
                                 ),
                               ],
@@ -490,33 +538,48 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                     height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: job?['jobStatus']?.toString().toLowerCase() == 'completed'
+                        backgroundColor:
+                            job?['jobStatus']?.toString().toLowerCase() ==
+                                'completed'
                             ? Colors.grey[400] // Disabled color
                             : Colors.black, // Active color
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(24),
                         ),
                       ),
-                      onPressed: job?['jobStatus']?.toString().toLowerCase() == 'completed'
-                          ? null // Disable button when completed
+                      onPressed:
+                          (job?['jobStatus']?.toString().toLowerCase() ==
+                                  'completed' ||
+                              job?['jobStatus']?.toString().toLowerCase() ==
+                                  'cancelled')
+                          ? null // Disable button when completed or cancelled
                           : () async {
-                        final result = await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => JobStatusPage(jobID: widget.jobID),
-                          ),
-                        );
-                        if (result == true) {
-                          _refreshJobDetails();
-                        }
-                      },
+                              final result = await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      JobStatusPage(jobID: widget.jobID),
+                                ),
+                              );
+                              if (result == true) {
+                                _refreshJobDetails();
+                              }
+                            },
                       child: Text(
-                        job?['jobStatus']?.toString().toLowerCase() == 'completed'
-                            ? 'Status Completed' // Changed text when completed
+                        job?['jobStatus']?.toString().toLowerCase() ==
+                                'completed'
+                            ? 'Status Completed'
+                            : job?['jobStatus']?.toString().toLowerCase() ==
+                                  'cancelled'
+                            ? 'Status Cancelled'
                             : 'Edit Status',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: job?['jobStatus']?.toString().toLowerCase() == 'completed'
+                          color:
+                              (job?['jobStatus']?.toString().toLowerCase() ==
+                                      'completed' ||
+                                  job?['jobStatus']?.toString().toLowerCase() ==
+                                      'cancelled')
                               ? Colors.grey[600] // Disabled text color
                               : Color(0xFFE6D6FA), // Active text color
                         ),

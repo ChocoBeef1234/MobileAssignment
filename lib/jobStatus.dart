@@ -55,8 +55,11 @@ class _JobStatusPageState extends State<JobStatusPage> {
 
   Future<void> _saveStatus() async {
     final db = FirebaseFirestore.instance;
-    // Update job status
-    await db.collection('jobs').doc(widget.jobID).update({'jobStatus': status});
+    // Update job status and statusChange timestamp
+    await db.collection('jobs').doc(widget.jobID).update({
+      'jobStatus': status,
+      'statusChange': FieldValue.serverTimestamp(),
+    });
 
     // Get the highest serviceRecordID and increment
     final records = await db
@@ -90,7 +93,22 @@ class _JobStatusPageState extends State<JobStatusPage> {
       'technicianNotes': noteController.text,
       'serviceDate': FieldValue.serverTimestamp(),
       'serviceID': serviceID ?? '', // Use fetched serviceID or empty string
+      'status': status, // Save the current status for history
     });
+  }
+
+  List<String> getValidStatusOptions(String currentStatus) {
+    switch (currentStatus) {
+      case 'Accepted':
+        return ['Accepted', 'In Progress', 'Completed', 'Cancelled'];
+      case 'In Progress':
+        return ['In Progress', 'Completed', 'Cancelled'];
+      case 'Completed':
+      case 'Cancelled':
+        return [currentStatus];
+      default:
+        return statusOptions;
+    }
   }
 
   @override
@@ -122,11 +140,14 @@ class _JobStatusPageState extends State<JobStatusPage> {
                 icon: Icon(
                   Icons.camera_alt_outlined,
                   color: Colors.black,
-                  size: 22, 
+                  size: 22,
                 ),
-                onPressed: () => Navigator.push(context, MaterialPageRoute(
-                              builder: (context) => CameraUploadPage(jobID: widget.jobID,),
-                            )),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CameraUploadPage(jobID: widget.jobID),
+                  ),
+                ),
               ),
             ],
           ),
@@ -155,16 +176,18 @@ class _JobStatusPageState extends State<JobStatusPage> {
                   value: status,
                   isExpanded: true,
                   icon: Icon(Icons.keyboard_arrow_down),
-                  items: statusOptions.map((String value) {
+                  items: getValidStatusOptions(status).map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
                     );
                   }).toList(),
                   onChanged: (String? newValue) {
-                    setState(() {
-                      status = newValue!;
-                    });
+                    if (newValue != null) {
+                      setState(() {
+                        status = newValue;
+                      });
+                    }
                   },
                 ),
               ),

@@ -38,7 +38,11 @@ class _AssignedPartsBottomSheetState extends State<AssignedPartsBottomSheet> {
     final db = FirebaseFirestore.instance;
     try {
       // Get the next jobPartID (JPxxx)
-      final jobPartsSnap = await db.collection('jobParts').orderBy('jobPartID', descending: true).limit(1).get();
+      final jobPartsSnap = await db
+          .collection('jobParts')
+          .orderBy('jobPartID', descending: true)
+          .limit(1)
+          .get();
       int nextNumber = 1;
       if (jobPartsSnap.docs.isNotEmpty) {
         final lastID = jobPartsSnap.docs.first['jobPartID'] as String?;
@@ -50,7 +54,9 @@ class _AssignedPartsBottomSheetState extends State<AssignedPartsBottomSheet> {
         }
       }
       final newJobPartID = 'JP' + nextNumber.toString().padLeft(3, '0');
-      print('Adding jobPart: jobID=${widget.jobID}, partID=$_selectedPartID, jobPartID=$newJobPartID, qty=$_quantity');
+      print(
+        'Adding jobPart: jobID=${widget.jobID}, partID=$_selectedPartID, jobPartID=$newJobPartID, qty=$_quantity',
+      );
       await db.collection('jobParts').add({
         'jobPartID': newJobPartID,
         'jobID': widget.jobID,
@@ -59,6 +65,7 @@ class _AssignedPartsBottomSheetState extends State<AssignedPartsBottomSheet> {
         'createdAt': FieldValue.serverTimestamp(),
       });
       print('jobPart added successfully');
+      Navigator.of(context).pop(true); // Return true to trigger refresh
     } catch (e) {
       print('Error adding jobPart: $e');
     }
@@ -152,8 +159,30 @@ class _AssignedPartsBottomSheetState extends State<AssignedPartsBottomSheet> {
                           ),
                         ),
                         onPressed: () async {
-                          await _addAssignedPart();
-                          Navigator.of(context).pop();
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('Confirm Assignment'),
+                              content: Text(
+                                'Are you sure you want to assign this part to the job?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                  child: Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                  child: Text('Confirm'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await _addAssignedPart();
+                          }
                         },
                         child: Text(
                           'Submit',
