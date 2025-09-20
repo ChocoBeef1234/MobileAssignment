@@ -168,7 +168,7 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusColor = Colors.green.shade100;
           statusTextColor = Colors.green.shade700;
           break;
-        case 'On Hold':
+        case 'Waiting':
           statusColor = Colors.red.shade100;
           statusTextColor = Colors.red.shade700;
           break;
@@ -191,6 +191,18 @@ class _MyTasksPageState extends State<MyTasksPage>
         ),
       );
     }
+    // 🔹 Sort Waiting jobs first if filterStatus == null (All tasks)
+    if (filterStatus == null) {
+      taskCards.sort((a, b) {
+        // Because TaskCard is a widget, we need to cast and compare their status
+        if (a is TaskCard && b is TaskCard) {
+          // “Waiting” jobs should come first
+          if (a.status == 'Waiting' && b.status != 'Waiting') return -1;
+          if (a.status != 'Waiting' && b.status == 'Waiting') return 1;
+        }
+        return 0;
+      });
+    }
 
     return taskCards;
   }
@@ -200,7 +212,8 @@ class _MyTasksPageState extends State<MyTasksPage>
       future: generateTaskCards(
         staffId!,
         filterStatus: filter,
-        searchQuery: _searchQuery,
+        searchQuery: _searchQuery, // <-- pass search
+
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -359,7 +372,7 @@ class _MyTasksPageState extends State<MyTasksPage>
                       Tab(text: "All task"),
                       Tab(text: "Accepted"),
                       Tab(text: "In Progress"),
-                      Tab(text: "On Hold"),
+                      Tab(text: "Waiting"),
                     ],
                   ),
                   const SizedBox(height: 15),
@@ -369,14 +382,21 @@ class _MyTasksPageState extends State<MyTasksPage>
                     child: staffId == null
                         ? Center(child: CircularProgressIndicator())
                         : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        buildTaskList(null),
-                        buildTaskList("Accepted"),
-                        buildTaskList("In Progress"),
-                        buildTaskList("On Hold"),
-                      ],
-                    ),
+                            controller: _tabController,
+                            children: [
+                              // All Tasks
+                              buildTaskList(null),
+
+                              // Accepted Tasks
+                              buildTaskList("Accepted"),
+
+                              // In Progress Tasks
+                              buildTaskList("In Progress"),
+
+                              // On Hold Tasks
+                              buildTaskList("Waiting"),
+                            ],
+                          ),
                   ),
                 ],
               ),
