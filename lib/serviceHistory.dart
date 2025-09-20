@@ -225,7 +225,7 @@ class ServiceHistoryPage extends StatelessWidget {
                                           Text(
                                             'Status: $status',
                                             style: TextStyle(
-                                              color: Colors.black,
+                                              color: Colors.green,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 13,
                                             ),
@@ -234,7 +234,7 @@ class ServiceHistoryPage extends StatelessWidget {
                                           Text(
                                             'Technician Notes:',
                                             style: TextStyle(
-                                              color: Colors.green,
+                                              color: Colors.black,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 13,
                                             ),
