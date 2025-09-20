@@ -26,6 +26,7 @@ String _searchQuery = '';
 class _MyTasksPageState extends State<MyTasksPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int unreadCount = 0;
 
   @override
   void initState() {
@@ -37,7 +38,6 @@ class _MyTasksPageState extends State<MyTasksPage>
   Future<void> _loadStaffId() async {
     staffId = await storage.read(key: "staffID");
     if (staffId != null) {
-      // 🔹 Get staff image
       final staffSnap = await FirebaseFirestore.instance
           .collection('staff')
           .where('staffID', isEqualTo: staffId)
@@ -52,8 +52,28 @@ class _MyTasksPageState extends State<MyTasksPage>
         final staffPho = staffSnap.docs.first.data();
         staffContactNo = staffPho['staffContactNo'] as String?;
       }
+
+      _loadUnreadCount();
     }
     setState(() {});
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (staffId == null) return;
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('notification')
+          .where('staffId', isEqualTo: staffId)
+          .where('Read', isEqualTo: false)
+          .get();
+
+      setState(() {
+        unreadCount = querySnapshot.docs.length;
+      });
+    } catch (e) {
+      print('Error loading unread count: $e');
+    }
   }
 
   String _formatTime(Timestamp? timestamp) {
@@ -73,10 +93,10 @@ class _MyTasksPageState extends State<MyTasksPage>
   }
 
   Future<List<Widget>> generateTaskCards(
-    String staffId, {
-    String? filterStatus,
-    String? searchQuery, // <-- added
-  }) async {
+      String staffId, {
+        String? filterStatus,
+        String? searchQuery,
+      }) async {
     final assignmentsSnap = await FirebaseFirestore.instance
         .collection('jobAssignments')
         .where('staffID', isEqualTo: staffId)
@@ -116,10 +136,10 @@ class _MyTasksPageState extends State<MyTasksPage>
       final carInfo = "${vehicleData['model']} ${vehicleData['plateNo']}";
       final searchText = "$customerName $carInfo".toLowerCase();
 
-      // 🔹 Filter by search text
+      // Filter by search text
       if (searchQuery != null && searchQuery.isNotEmpty) {
         if (!searchText.contains(searchQuery.toLowerCase())) {
-          continue; // skip if no match
+          continue;
         }
       }
 
@@ -148,7 +168,7 @@ class _MyTasksPageState extends State<MyTasksPage>
           statusColor = Colors.green.shade100;
           statusTextColor = Colors.green.shade700;
           break;
-        case 'On Hold':
+        case 'Waiting':
           statusColor = Colors.red.shade100;
           statusTextColor = Colors.red.shade700;
           break;
@@ -171,32 +191,44 @@ class _MyTasksPageState extends State<MyTasksPage>
         ),
       );
     }
+    // 🔹 Sort Waiting jobs first if filterStatus == null (All tasks)
+    if (filterStatus == null) {
+      taskCards.sort((a, b) {
+        // Because TaskCard is a widget, we need to cast and compare their status
+        if (a is TaskCard && b is TaskCard) {
+          // “Waiting” jobs should come first
+          if (a.status == 'Waiting' && b.status != 'Waiting') return -1;
+          if (a.status != 'Waiting' && b.status == 'Waiting') return 1;
+        }
+        return 0;
+      });
+    }
 
     return taskCards;
   }
 
-Widget buildTaskList(String? filter) {
-  return FutureBuilder<List<Widget>>(
-    future: generateTaskCards(
-      staffId!,
-      filterStatus: filter,
-      searchQuery: _searchQuery, // <-- pass search
-    ),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-        return const Center(child: Text("No tasks found"));
-      }
-      return ListView(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 140),
-        children: snapshot.data!,
-      );
-    },
-  );
-}
+  Widget buildTaskList(String? filter) {
+    return FutureBuilder<List<Widget>>(
+      future: generateTaskCards(
+        staffId!,
+        filterStatus: filter,
+        searchQuery: _searchQuery, // <-- pass search
 
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text("No tasks found"));
+        }
+        return ListView(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 140),
+          children: snapshot.data!,
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +237,6 @@ Widget buildTaskList(String? filter) {
       extendBody: true,
       body: Stack(
         children: [
-          // Main content with SafeArea
           SafeArea(
             bottom: false,
             child: Padding(
@@ -219,17 +250,16 @@ Widget buildTaskList(String? filter) {
                         radius: 25,
                         backgroundColor: Colors.grey.shade200,
                         backgroundImage:
-                            (staffImageBase64 != null &&
-                                staffImageBase64!.isNotEmpty)
+                        (staffImageBase64 != null &&
+                            staffImageBase64!.isNotEmpty)
                             ? MemoryImage(base64Decode(staffImageBase64!))
                             : null,
                         child:
-                            (staffImageBase64 == null ||
-                                staffImageBase64!.isEmpty)
+                        (staffImageBase64 == null ||
+                            staffImageBase64!.isEmpty)
                             ? const Icon(Icons.person, color: Colors.grey)
                             : null,
                       ),
-
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,16 +278,50 @@ Widget buildTaskList(String? filter) {
                         ],
                       ),
                       const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.notifications_none, size: 28),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NotificationPage(),
+                      // Notification Icon with Badge
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.notifications_none, size: 28),
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NotificationPage(),
+                                ),
+                              );
+                              // Refresh unread count when returning from notifications
+                              _loadUnreadCount();
+                            },
+                          ),
+                          // Red notification badge
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Text(
+                                  unreadCount > 99 ? '99+' : '$unreadCount',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
-                          );
-                        },
+                        ],
                       ),
                     ],
                   ),
@@ -269,7 +333,6 @@ Widget buildTaskList(String? filter) {
                   ),
                   const SizedBox(height: 12),
 
-                  // Search bar
                   // Search bar
                   TextField(
                     decoration: InputDecoration(
@@ -288,7 +351,6 @@ Widget buildTaskList(String? filter) {
                       });
                     },
                   ),
-
                   const SizedBox(height: 10),
 
                   // Tabs
@@ -310,7 +372,7 @@ Widget buildTaskList(String? filter) {
                       Tab(text: "All task"),
                       Tab(text: "Accepted"),
                       Tab(text: "In Progress"),
-                      Tab(text: "On Hold"),
+                      Tab(text: "Waiting"),
                     ],
                   ),
                   const SizedBox(height: 15),
@@ -332,7 +394,7 @@ Widget buildTaskList(String? filter) {
                               buildTaskList("In Progress"),
 
                               // On Hold Tasks
-                              buildTaskList("On Hold"),
+                              buildTaskList("Waiting"),
                             ],
                           ),
                   ),
@@ -388,7 +450,6 @@ class TaskCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(

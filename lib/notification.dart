@@ -78,7 +78,6 @@ class FirebaseNotification {
     } else if (notificationDate == yesterday) {
       return "Yesterday | $timeStr";
     } else {
-
       final weekStart = today.subtract(Duration(days: today.weekday - 1));
       if (notificationDate.isAfter(weekStart.subtract(Duration(days: 1)))) {
         final weekday = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -99,14 +98,23 @@ class NotificationPage extends StatefulWidget {
   State<NotificationPage> createState() => _NotificationPageState();
 }
 
-class _NotificationPageState extends State<NotificationPage> {
+class _NotificationPageState extends State<NotificationPage>
+    with SingleTickerProviderStateMixin {
   late Stream<QuerySnapshot> _notificationStream;
+  late TabController _tabController;
   Map<String, dynamic>? _currentFilter;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _initializeNotificationStream();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _initializeNotificationStream() {
@@ -206,6 +214,91 @@ class _NotificationPageState extends State<NotificationPage> {
         date1.day == date2.day;
   }
 
+  Widget _buildNotificationList(List<FirebaseNotification> notifications, {bool showUnreadOnly = false}) {
+    // Filter notifications if showing unread only
+    if (showUnreadOnly) {
+      notifications = notifications.where((notification) => !notification.read).toList();
+    }
+
+    if (notifications.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              showUnreadOnly ? Icons.mark_email_read : Icons.notifications_none,
+              size: 64,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text(
+              showUnreadOnly
+                  ? 'No unread notifications'
+                  : (_currentFilter != null
+                  ? 'No notifications found for the selected date range'
+                  : 'No notifications found'),
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            if (_currentFilter != null) ...[
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _currentFilter = null;
+                    _initializeNotificationStream();
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                ),
+                child: Text('Clear Filter', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    final todayNotifications = _groupNotificationsByPeriod(notifications, 'Today');
+    final yesterdayNotifications = _groupNotificationsByPeriod(notifications, 'Yesterday');
+    final thisWeekNotifications = _groupNotificationsByPeriod(notifications, 'This Week');
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        if (todayNotifications.isNotEmpty) ...[
+          _buildSectionTitle("Today"),
+          ...todayNotifications.map((notification) =>
+              _buildNotificationItem(notification)),
+          const SizedBox(height: 16),
+        ],
+
+        if (yesterdayNotifications.isNotEmpty) ...[
+          _buildSectionTitle("Yesterday"),
+          ...yesterdayNotifications.map((notification) =>
+              _buildNotificationItem(notification)),
+          const SizedBox(height: 16),
+        ],
+
+        if (thisWeekNotifications.isNotEmpty) ...[
+          _buildSectionTitle("This Week"),
+          ...thisWeekNotifications.map((notification) =>
+              _buildNotificationItem(notification)),
+        ],
+
+        if (todayNotifications.isEmpty &&
+            yesterdayNotifications.isEmpty &&
+            thisWeekNotifications.isEmpty &&
+            notifications.isNotEmpty) ...[
+          _buildSectionTitle(showUnreadOnly ? "All Unread Notifications" : "All Notifications"),
+          ...notifications.map((notification) =>
+              _buildNotificationItem(notification)),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -214,6 +307,7 @@ class _NotificationPageState extends State<NotificationPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -238,7 +332,6 @@ class _NotificationPageState extends State<NotificationPage> {
                       if (result != null) {
                         _applyFilter(result);
                       } else {
-                        // Handle reset - clear all filters
                         setState(() {
                           _currentFilter = null;
                           _initializeNotificationStream();
@@ -250,8 +343,34 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
             ),
 
-            const SizedBox(height: 8),
+            // Tab Bar
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey[600],
+                labelStyle: TextStyle(fontWeight: FontWeight.w600),
+                unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
+                tabs: const [
+                  Tab(text: "All"),
+                  Tab(text: "Unread"),
+                ],
+              ),
+            ),
 
+            const SizedBox(height: 16),
+
+            // Tab Bar View
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _notificationStream,
@@ -303,78 +422,20 @@ class _NotificationPageState extends State<NotificationPage> {
                   }
 
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.notifications_none, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            _currentFilter != null
-                                ? 'No notifications found for the selected date range'
-                                : 'No notifications found',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (_currentFilter != null) ...[
-                            SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _currentFilter = null;
-                                  _initializeNotificationStream();
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.black,
-                              ),
-                              child: Text('Clear Filter', style: TextStyle(color: Colors.white)),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
+                    return _buildNotificationList([], showUnreadOnly: false);
                   }
 
                   final notifications = snapshot.data!.docs
                       .map((doc) => FirebaseNotification.fromFirestore(doc))
                       .toList();
 
-                  final todayNotifications = _groupNotificationsByPeriod(notifications, 'Today');
-                  final yesterdayNotifications = _groupNotificationsByPeriod(notifications, 'Yesterday');
-                  final thisWeekNotifications = _groupNotificationsByPeriod(notifications, 'This Week');
-
-                  return ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  return TabBarView(
+                    controller: _tabController,
                     children: [
-                      if (todayNotifications.isNotEmpty) ...[
-                        _buildSectionTitle("Today"),
-                        ...todayNotifications.map((notification) =>
-                            _buildNotificationItem(notification)),
-                        const SizedBox(height: 16),
-                      ],
-
-                      if (yesterdayNotifications.isNotEmpty) ...[
-                        _buildSectionTitle("Yesterday"),
-                        ...yesterdayNotifications.map((notification) =>
-                            _buildNotificationItem(notification)),
-                        const SizedBox(height: 16),
-                      ],
-
-                      if (thisWeekNotifications.isNotEmpty) ...[
-                        _buildSectionTitle("This Week"),
-                        ...thisWeekNotifications.map((notification) =>
-                            _buildNotificationItem(notification)),
-                      ],
-
-                      if (todayNotifications.isEmpty &&
-                          yesterdayNotifications.isEmpty &&
-                          thisWeekNotifications.isEmpty &&
-                          notifications.isNotEmpty) ...[
-                        _buildSectionTitle("All Notifications"),
-                        ...notifications.map((notification) =>
-                            _buildNotificationItem(notification)),
-                      ],
+                      // All notifications tab
+                      _buildNotificationList(notifications, showUnreadOnly: false),
+                      // Unread notifications tab
+                      _buildNotificationList(notifications, showUnreadOnly: true),
                     ],
                   );
                 },
