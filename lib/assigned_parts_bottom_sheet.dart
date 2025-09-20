@@ -113,11 +113,13 @@ class _AssignedPartsBottomSheetState extends State<AssignedPartsBottomSheet> {
                         child: DropdownButtonFormField<String>(
                           value: _selectedPartID,
                           hint: Text('Select Spare Part'),
+                          isExpanded: true, 
                           items: _spareParts.map((part) {
                             return DropdownMenuItem<String>(
                               value: part['partID'],
                               child: Text(
                                 '${part['partName']} (Part No: ${part['partID']})',
+                                overflow: TextOverflow.ellipsis,
                               ),
                             );
                           }).toList(),
