@@ -88,6 +88,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
           final parts = data['parts'] as List<Map<String, dynamic>>?;
           final signatureData = data['signature'] as String?;
           final feedbackData = data['feedback'] as String?;
+          final completionTime = data['completionTime'] as double?;
 
           return Container(
             color: const Color(0xFFF9F9F9),
@@ -401,6 +402,27 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
                                 ),
                               ),
 
+                            // Completion Time Section (only show when job is completed)
+                            if (job?['jobStatus']?.toString().toLowerCase() == 'completed' && completionTime != null) ...[
+                              SizedBox(height: 16),
+                              Text(
+                                'Completion Time',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                _formatDuration(completionTime),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 15,
+                                  color: Color(0xFF7C3AED),
+                                ),
+                              ),
+                            ],
+
                             // Signature and Feedback Section
                             if (job?['jobStatus']?.toString().toLowerCase() ==
                                 'completed') ...[
@@ -659,6 +681,18 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
     String? signature = job['signature'];
     String? feedback = job['feedback'];
 
+    // Fetch completion time from jobAssignments
+    double? completionTime;
+    final jobAssignmentsSnap = await db
+        .collection('jobAssignments')
+        .where('jobID', isEqualTo: jobID)
+        .get();
+    
+    if (jobAssignmentsSnap.docs.isNotEmpty) {
+      final assignmentData = jobAssignmentsSnap.docs.first.data();
+      completionTime = (assignmentData['hoursWorked'] as num?)?.toDouble();
+    }
+
     return {
       'job': job,
       'vehicle': vehicle,
@@ -667,6 +701,7 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       'serviceDescription': serviceDescription,
       'signature': signature,
       'feedback': feedback,
+      'completionTime': completionTime,
     };
   }
 
@@ -676,6 +711,22 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
     }
     return '-';
+  }
+
+  String _formatDuration(double seconds) {
+    // The input is already in seconds, no conversion needed
+    final int totalSeconds = seconds.round();
+    
+    // Calculate hours, minutes, and seconds
+    final int h = totalSeconds ~/ 3600;
+    final int m = (totalSeconds % 3600) ~/ 60;
+    final int s = totalSeconds % 60;
+
+    final String hStr = h.toString().padLeft(2, '0');
+    final String mStr = m.toString().padLeft(2, '0');
+    final String sStr = s.toString().padLeft(2, '0');
+
+    return '$hStr:$mStr:$sStr'; // hh:mm:ss format
   }
 
   Uint8List _base64ToUint8List(String base64String) {

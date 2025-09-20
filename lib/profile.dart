@@ -22,7 +22,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? email;
   double rating = 0.0;
   int totalJobs = 0;
-  double avgCompletionTime = 0.0;
+  double totalHoursWorked = 0.0;
   bool loading = true;
   String? profileBase64; // 🔹 holds Base64 from Firestore
 
@@ -33,14 +33,17 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String formatDuration(double seconds) {
+    // The input is already in seconds, no conversion needed
     final int totalSeconds = seconds.round();
-    final int hours = totalSeconds ~/ 3600;
-    final int minutes = (totalSeconds % 3600) ~/ 60;
-    final int remainingSeconds = totalSeconds % 60;
 
-    final String hStr = hours.toString().padLeft(2, '0');
-    final String mStr = minutes.toString().padLeft(2, '0');
-    final String sStr = remainingSeconds.toString().padLeft(2, '0');
+    // Calculate hours, minutes, and seconds
+    final int h = totalSeconds ~/ 3600;
+    final int m = (totalSeconds % 3600) ~/ 60;
+    final int s = totalSeconds % 60;
+
+    final String hStr = h.toString().padLeft(2, '0');
+    final String mStr = m.toString().padLeft(2, '0');
+    final String sStr = s.toString().padLeft(2, '0');
 
     return '$hStr:$mStr:$sStr'; // hh:mm:ss format
   }
@@ -79,11 +82,11 @@ class _ProfilePageState extends State<ProfilePage> {
           .get();
 
       int completedCount = 0;
-      int totalTime = 0;
+      double totalTime = 0.0;
 
       for (var doc in assignmentsSnap.docs) {
         final jobID = doc['jobID'];
-        final completionTime = doc['hoursWorked'];
+        final hoursWorked = doc['hoursWorked'];
 
         // Check job status
         final jobSnap = await FirebaseFirestore.instance
@@ -93,14 +96,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
         if (jobSnap.exists && jobSnap['jobStatus'] == 'Completed') {
           completedCount++;
-          if (completionTime != null) {
-            totalTime += (completionTime as num).toInt();
+          if (hoursWorked != null) {
+            totalTime += (hoursWorked as num).toDouble();
           }
         }
       }
 
       totalJobs = completedCount;
-      avgCompletionTime = completedCount > 0 ? totalTime / completedCount : 0.0;
+      totalHoursWorked = totalTime;
 
       setState(() {
         loading = false;
@@ -293,8 +296,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildInfoRow('Total Job Completed', '$totalJobs'),
                       const SizedBox(height: 15),
                       _buildInfoRow(
-                        'Average Completion Time',
-                        formatDuration(avgCompletionTime),
+                        'Total worked Time',
+                        formatDuration(totalHoursWorked),
                       ),
                     ],
                   ),

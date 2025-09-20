@@ -20,7 +20,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
+
 
   bool loading = true;
   String? docId; // Firestore document ID of staff
@@ -54,7 +54,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         final data = staffDoc.data();
         nameController.text = data['staffName'] ?? '';
         phoneController.text = data['staffContactNo'] ?? '';
-        emailController.text = data['staffEmail'] ?? '';
         profileBase64 = data['profile_image']; // your base64 string
       }
     } catch (e) {
@@ -71,7 +70,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await FirebaseFirestore.instance.collection('staff').doc(docId).update({
         'staffName': nameController.text.trim(),
         'staffContactNo': phoneController.text.trim(),
-        'staffEmail': emailController.text.trim(),
         'profile_image': profileBase64 ?? '', // save updated base64 image
       });
 
@@ -100,7 +98,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void dispose() {
     nameController.dispose();
     phoneController.dispose();
-    emailController.dispose();
     super.dispose();
   }
 
@@ -197,12 +194,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       _buildTextField(
                         controller: phoneController,
                         keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildLabel('Email'),
-                      _buildTextField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 16),
                       _buildLabel('Password'),

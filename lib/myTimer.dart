@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'jobDetail.dart';
 
 class TimerPage extends StatefulWidget {
   const TimerPage({super.key});
@@ -113,6 +114,34 @@ void _pauseTimer() {
   setState(() {});
 }
 
+  Future<void> _completeJob() async {
+    if (_selectedTaskId == null) return;
+
+    // Stop and save the timer first
+    _pauseTimer();
+    await FirebaseFirestore.instance
+        .collection('jobAssignments')
+        .doc(_selectedTaskId)
+        .update({'hoursWorked': _timerValue.value});
+
+    // Get the jobID from the assignment
+    final assignmentDoc = await FirebaseFirestore.instance
+        .collection('jobAssignments')
+        .doc(_selectedTaskId)
+        .get();
+    
+    if (assignmentDoc.exists) {
+      final jobID = assignmentDoc.data()!['jobID'];
+      
+      // Navigate to job details page
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => JobDetailsPage(jobID: jobID),
+        ),
+      );
+    }
+  }
+
   void _onTaskTap(Map<String, dynamic> task) {
     setState(() {
       _selectedTaskId = task['id'];
@@ -160,13 +189,17 @@ void _pauseTimer() {
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton(
-                              onPressed: _pauseTimer,
-                              child: const Text("Pause"),
+                              onPressed: _stopTimerAndSave,
+                              child: const Text("Stop & Save"),
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton(
-                              onPressed: _stopTimerAndSave,
-                              child: const Text("Stop & Save"),
+                              onPressed: _selectedTaskId != null ? _completeJob : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text("Complete"),
                             ),
                           ],
                         ),
