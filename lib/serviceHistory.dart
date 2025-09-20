@@ -44,17 +44,6 @@ class ServiceHistoryPage extends StatelessWidget {
                 ),
               ),
               Spacer(),
-              IconButton(
-                icon: Icon(Icons.image_outlined, color: Colors.black, size: 22),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => JobImagesPage(jobID: jobID),
-                    ),
-                  );
-                },
-              ),
             ],
           ),
         ),
@@ -181,68 +170,93 @@ class ServiceHistoryPage extends StatelessWidget {
                                 ? record['technicianNotes']
                                 : '-';
                             final status = record['status'] ?? '-';
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Text(
-                                      date,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
+                            final recordID =
+                                record['serviceRecordID'] ??
+                                ''; // your linking ID
+
+                            return GestureDetector(
+                              onTap: () {
+                                if (recordID.isNotEmpty) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          JobImagesPage(recordID: recordID),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(
+                                        date,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                Expanded(
-                                  flex: 5,
-                                  child: Container(
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFFB6FFB6),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: EdgeInsets.all(12),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          serviceDesc,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
+                                  Expanded(
+                                    flex: 5,
+                                    child: Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFB6FFB6),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            serviceDesc,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Status: $status',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Status: $status',
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Technician Notes:',
-                                          style: TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Technician Notes:',
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                            ),
                                           ),
-                                        ),
-                                        Text(
-                                          notes,
-                                          style: TextStyle(fontSize: 13),
-                                        ),
-                                      ],
+                                          Text(
+                                            notes,
+                                            style: TextStyle(fontSize: 13),
+                                          ),
+                                          SizedBox(height: 6),
+                                          Text(
+                                            'Tap to view images',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.blueGrey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             );
                           },
                         );

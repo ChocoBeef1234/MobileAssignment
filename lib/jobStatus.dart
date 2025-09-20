@@ -1,12 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:user_profile/photo.dart';
+import 'package:image_picker/image_picker.dart';
 
 class JobStatusPage extends StatefulWidget {
   final String jobID;
   final String? serviceRecordID;
   const JobStatusPage({Key? key, required this.jobID, this.serviceRecordID})
-    : super(key: key);
+      : super(key: key);
 
   @override
   State<JobStatusPage> createState() => _JobStatusPageState();
@@ -21,9 +24,10 @@ class _JobStatusPageState extends State<JobStatusPage> {
     'Completed',
     'Cancelled',
   ];
-  final TextEditingController noteController = TextEditingController(
-    text: 'Today...',
-  );
+  final TextEditingController noteController =
+      TextEditingController(text: 'Today...');
+
+  List<XFile> selectedImages = []; // local images selected or taken
 
   @override
   void initState() {
@@ -32,7 +36,6 @@ class _JobStatusPageState extends State<JobStatusPage> {
   }
 
   Future<void> _loadInitialStatus() async {
-    // Load current job status and note from Firestore
     final db = FirebaseFirestore.instance;
     final jobDoc = await db.collection('jobs').doc(widget.jobID).get();
     if (jobDoc.exists) {
@@ -50,6 +53,28 @@ class _JobStatusPageState extends State<JobStatusPage> {
         final svc = svcDoc.data()!;
         noteController.text = svc['technicianNotes'] ?? noteController.text;
       }
+    }
+  }
+
+  Future<void> _pickImages() async {
+    final picker = ImagePicker();
+    final images = await picker.pickMultiImage();
+    if (!mounted) return;
+    if (images.isNotEmpty) {
+      setState(() {
+        selectedImages.addAll(images);
+      });
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    final picker = ImagePicker();
+    final photo = await picker.pickImage(source: ImageSource.camera);
+    if (!mounted) return;
+    if (photo != null) {
+      setState(() {
+        selectedImages.add(photo);
+      });
     }
   }
 
@@ -87,14 +112,32 @@ class _JobStatusPageState extends State<JobStatusPage> {
       serviceID = jobData?['serviceID'] as String?;
     }
 
+    // Save service record
     await db.collection('serviceRecord').doc(newServiceRecordID).set({
       'serviceRecordID': newServiceRecordID,
       'jobID': widget.jobID,
       'technicianNotes': noteController.text,
       'serviceDate': FieldValue.serverTimestamp(),
-      'serviceID': serviceID ?? '', // Use fetched serviceID or empty string
-      'status': status, // Save the current status for history
+      'serviceID': serviceID ?? '',
+      'status': status,
     });
+
+    // Save images to imageRecord collection
+    for (final image in selectedImages) {
+      final bytes = await image.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      final newImageDoc = db.collection('imageRecord').doc();
+      await newImageDoc.set({
+        'imageID': newImageDoc.id,
+        'recordID': newServiceRecordID, // link to the service record
+        'jobID': widget.jobID,
+        'image': base64Image,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   List<String> getValidStatusOptions(String currentStatus) {
@@ -115,67 +158,43 @@ class _JobStatusPageState extends State<JobStatusPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(56),
-        child: Container(
-          color: const Color(0xFFF9F9F9),
-          padding: EdgeInsets.only(top: 8, left: 8, right: 8),
-          child: Row(
-            children: [
-              IconButton(
-                icon: Icon(Icons.arrow_back_ios, color: Colors.black, size: 22),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              SizedBox(width: 4),
-              Text(
-                'Job Status',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-              Spacer(),
-              IconButton(
-                icon: Icon(
-                  Icons.camera_alt_outlined,
-                  color: Colors.black,
-                  size: 22,
-                ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CameraUploadPage(jobID: widget.jobID),
-                  ),
-                ),
-              ),
-            ],
+      appBar: AppBar(
+        title: const Text('Job Status'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.photo_library),
+            onPressed: _pickImages,
           ),
-        ),
+          IconButton(
+            icon: const Icon(Icons.camera_alt),
+            onPressed: _takePhoto,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 8),
-            Text(
-              'Status',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            ),
-            SizedBox(height: 8),
+            Text('Status',
+                style:
+                    TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Color(0xFFE0E0E0)),
               ),
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: status,
                   isExpanded: true,
-                  icon: Icon(Icons.keyboard_arrow_down),
+                  icon: const Icon(Icons.keyboard_arrow_down),
                   items: getValidStatusOptions(status).map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
@@ -192,17 +211,11 @@ class _JobStatusPageState extends State<JobStatusPage> {
                 ),
               ),
             ),
-            SizedBox(height: 24),
-            Row(
-              children: [
-                Text(
-                  'Note',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-                Spacer(),
-              ],
-            ),
-            SizedBox(height: 8),
+            const SizedBox(height: 16),
+            Text('Note',
+                style:
+                    TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            const SizedBox(height: 8),
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -216,62 +229,83 @@ class _JobStatusPageState extends State<JobStatusPage> {
                   ),
                 ],
               ),
-              padding: EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: List.generate(
-                      12,
-                      (index) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                        child: Icon(
-                          Icons.circle_outlined,
-                          size: 18,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 6,
-                    minLines: 4,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      isCollapsed: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    style: TextStyle(fontSize: 15),
-                  ),
-                ],
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                controller: noteController,
+                maxLines: 6,
+                minLines: 4,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: const TextStyle(fontSize: 15),
               ),
             ),
-            Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+            const SizedBox(height: 16),
+            Text('Selected Images',
+                style:
+                    TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 80,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: selectedImages.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        Image.file(
+                          // ignore: unnecessary_cast
+                          (selectedImages[index] as XFile).path != null
+                              ? File(selectedImages[index].path)
+                              : File(''),
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedImages.removeAt(index);
+                            });
+                          },
+                          child: const CircleAvatar(
+                            radius: 10,
+                            backgroundColor: Colors.red,
+                            child: Icon(Icons.close,
+                                size: 14, color: Colors.white),
+                          ),
+                        )
+                      ],
                     ),
+                  );
+                },
+              ),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  onPressed: () async {
-                    await _saveStatus();
-                    if (mounted) Navigator.of(context).pop(true);
-                  },
-                  child: Text(
-                    'Save',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                ),
+                onPressed: _saveStatus,
+                child: const Text(
+                  'Save',
+                  style:
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
